@@ -1,0 +1,37 @@
+{
+  "name": "oxford-firebase",
+  "version": "1.0.0",
+  "description": "Oxford School Student Management System",
+  "main": "oxford firebase.js",
+  "homepage": "https://the-oxford-project.web.app",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "deploy": "npm run build && firebase deploy"
+  },
+  "keywords": ["student-management", "school", "oxford"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "firebase": "^10.7.1",
+    "lucide-react": "^0.294.0",
+    "firebase-tools": "^15.9.1"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
