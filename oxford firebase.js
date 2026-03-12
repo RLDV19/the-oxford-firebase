@@ -2343,7 +2343,16 @@ function App() {
     };
   }, [firebaseUser]);
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    // Restore persistent login state from localStorage
+    try {
+      const savedUser = localStorage.getItem('oxford_current_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      console.error('Error loading saved user session:', error);
+      return null;
+    }
+  });
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [adminTab, setAdminTab] = useState('students');
   const [teacherTab, setTeacherTab] = useState('students'); 
@@ -2374,6 +2383,20 @@ function App() {
       setDraftReport(null);
     }
   }, [currentView]);
+
+  // Save currentUser to localStorage whenever it changes
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        localStorage.setItem('oxford_current_user', JSON.stringify(currentUser));
+      } catch (error) {
+        console.error('Error saving user session:', error);
+      }
+    } else {
+      // Remove from localStorage when user logs out
+      localStorage.removeItem('oxford_current_user');
+    }
+  }, [currentUser]);
 
   if (!isDbLoaded) {
     return (
