@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Plus, Save, UserCircle, Settings, Award, ShieldCheck, GraduationCap, FileText, Star, Users, LogOut, ArrowLeft, UserPlus, Clock, CheckCircle, Edit3, Send, Image as ImageIcon, X, Move, Search, Folder, ChevronDown, ChevronRight, Calendar, Link as LinkIcon, Phone, Mail, Tag, Lock, MessageSquare, ChevronLeft, Sparkles, UserX, Activity, TrendingUp, Archive, Cloud, ClipboardList } from 'lucide-react';
+import { Trash2, Plus, Save, UserCircle, Settings, Award, ShieldCheck, GraduationCap, FileText, Star, Users, LogOut, ArrowLeft, UserPlus, Clock, CheckCircle, Edit3, Send, Image as ImageIcon, X, Move, Search, Folder, ChevronDown, ChevronRight, Calendar, Link as LinkIcon, Phone, Mail, Tag, Lock, MessageSquare, ChevronLeft, Sparkles, UserX, Activity, TrendingUp, Archive, Cloud, ClipboardList, CreditCard } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
 import { initializeApp } from 'firebase/app';
@@ -7,25 +7,54 @@ import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged }
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, writeBatch, query } from 'firebase/firestore';
 
 // --- INITIALIZE FIREBASE ---
-const firebaseConfig = {
+const runtimeFirebaseConfig =
+  typeof __firebase_config !== 'undefined' && __firebase_config
+    ? JSON.parse(__firebase_config)
+    : null;
+
+const envFirebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
+};
+
+const fallbackFirebaseConfig = {
   apiKey: "AIzaSyAmekG_W6a96pTJZ86fuwW1lWogmR9yV1I",
   authDomain: "the-oxford-project.firebaseapp.com",
   projectId: "the-oxford-project",
   storageBucket: "the-oxford-project.firebasestorage.app",
   messagingSenderId: "668485042428",
   appId: "1:668485042428:web:a5f4717f9e3ee23b0e9779",
-  measurementId: "G-158BD16Z5B"
+  measurementId: "G-158BD16Z5B",
 };
 
+const firebaseConfig =
+  runtimeFirebaseConfig ||
+  (envFirebaseConfig.apiKey ? envFirebaseConfig : fallbackFirebaseConfig);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestoreDb = getFirestore(app);
-const appId = 'the-oxford-project';
+const appId =
+  (typeof __app_id !== 'undefined' && __app_id) ||
+  firebaseConfig.projectId ||
+  'default-app-id';
 
-const getPublicCollection = (collectionName) => collection(firestoreDb, 'students');
-const getPublicDoc = (collectionName, documentId) => doc(firestoreDb, 'students', documentId);
+const getPublicCollection = (collectionName) => collection(firestoreDb, 'artifacts', appId, 'public', 'data', collectionName);
+const getPublicDoc = (collectionName, documentId) => doc(firestoreDb, 'artifacts', appId, 'public', 'data', collectionName, documentId);
 
 // --- CONSTANTS & HELPERS ---
+const DEFAULT_COURSES = [
+  { id: "phonics1", name: "Phonics 1" },
+  { id: "phonics2", name: "Phonics 2" },
+  { id: "phonics3", name: "Phonics 3" },
+  { id: "phonics4", name: "Phonics 4" },
+  { id: "phonics5", name: "Phonics 5" }
+];
+
 const GRADE_SCALE_LEFT = [
   'A+ = 97%-100%', 'A = 94%-96%', 'A- = 90%-93%', 
   'B+ = 87%-89%', 'B = 84%-86%', 'B- = 80%-83%', 'C+ = 77%-79%'
@@ -149,6 +178,195 @@ const checkPerm = (user, permName) => {
     : (isPrivatePerm ? false : true); 
 };
 
+// ==========================================
+// UTILS: homeworkStatusUtils.js
+// ==========================================
+const homeworkStatusUtils = {
+  calculateNewStatusFields: (newStatus) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newDate = (newStatus === 'Submitted' || newStatus === 'Submitted Late') ? today : null;
+    return { submissionDate: newDate };
+  },
+  getTooltip: (report, t) => {
+    if (!report.homework) return '';
+    let tip = report.homeworkStatus ? t(report.homeworkStatus.toLowerCase().replace(' ', '_')) : t('assigned_date');
+    if (report.submissionDate) tip += `\n${t('submission_date')}: ${report.submissionDate}`;
+    if (report.homeworkRemark) tip += `\n${t('remark')}: ${report.homeworkRemark}`;
+    return tip;
+  }
+};
+
+// --- TRANSLATIONS & i18n ---
+const translations = {
+  en: {
+    login_title: "The Oxford School",
+    login_subtitle: "Language Portal Login",
+    login_id: "Login ID / Username",
+    password: "Password",
+    login_btn: "Log In",
+    portal_title: "Oxford Portal",
+    back_dashboard: "Back to Dashboard",
+    student_history: "Student History",
+    edit_report: "Edit Report",
+    final_preview: "Final Preview",
+    back_portal: "Back to My Portal",
+    super_admin_dashboard: "Super Admin Dashboard",
+    new_student: "New Student",
+    new_user: "New User",
+    manage_students: "Manage Students",
+    manage_users: "Manage Users",
+    manage_certificates: "Manage Certificates",
+    school_calendar: "School Calendar",
+    search_students: "Search students by name...",
+    total_enrolled: "Total Enrolled",
+    active_students: "Active (Come More)",
+    stopped_resigned: "Stopped / Resigned",
+    my_students: "My Students",
+    my_schedule: "My Schedule",
+    welcome: "Welcome",
+    hours_balance: "My Hours Balance",
+    total_registered: "Total Registered",
+    hours_used: "Hours Used",
+    remaining: "Remaining",
+    my_payments: "My Payments",
+    view_billing_history: "View Billing History",
+    official_certificate: "Official Certificate",
+    view_diploma: "View Diploma",
+    my_report_cards: "My Report Cards",
+    add_package: "Add Package",
+    payments_billing: "Payments & Billing",
+    attendance_summary: "Attendance Summary",
+    advanced_summary: "Advanced Summary",
+    attendance_tracking: "Attendance & Hours Tracking",
+    todays_classes: "Today's Classes",
+    write_report: "Write Report",
+    lesson_summary: "Lesson Summary",
+    homework: "Homework",
+    teacher_comment: "Teacher Comment",
+    score_optional: "Score (Optional)",
+    student_lesson_reports: "Student Lesson Reports",
+    save_report: "Save Report",
+    no_classes_today: "No classes scheduled for today.",
+    no_lesson_reports: "No lesson reports available yet.",
+    parent_report: "Parent Report",
+    preview_parent_report: "Preview Parent Report",
+    send_via_line: "Send via LINE",
+    send_via_email: "Send via Email",
+    homework_status: "Homework Status",
+    submitted: "Submitted",
+    submitted_late: "Submitted Late",
+    not_submitted: "Not Submitted",
+    submission_date: "Submission Date",
+    remark: "Remark",
+    lesson_topic: "Lesson Topic",
+    assigned_date: "Assigned Date",
+    my_reports: "My Reports",
+    filter_student: "Filter by Student",
+    filter_month: "Filter by Month",
+    filter_course: "Filter by Course",
+    all_students: "All Students",
+    all_months: "All Months",
+    all_courses: "All Courses",
+    upcoming_class: "Upcoming Class",
+    view_full_schedule: "View Full Schedule",
+    course_progress: "Course Progress",
+    attendance_record: "Attendance Record",
+    package_information: "Package Information",
+    contact_school: "Contact School",
+    level: "Level",
+    in_progress: "In Progress",
+    completed: "Completed",
+    manage_courses: "Manage Courses",
+    add_course: "Add Course",
+    course_name: "Course Name"
+  },
+  th: {
+    login_title: "โรงเรียนสอนภาษา อ๊อกซ์ฟอร์ด",
+    login_subtitle: "ระบบเข้าสู่ระบบ",
+    login_id: "รหัสผู้ใช้ / ชื่อผู้ใช้",
+    password: "รหัสผ่าน",
+    login_btn: "เข้าสู่ระบบ",
+    portal_title: "พอร์ทัล Oxford",
+    back_dashboard: "กลับสู่หน้าหลัก",
+    student_history: "ประวัตินักเรียน",
+    edit_report: "แก้ไขรายงาน",
+    final_preview: "ดูตัวอย่างรายงาน",
+    back_portal: "กลับสู่พอร์ทัลของฉัน",
+    super_admin_dashboard: "แผงควบคุมผู้ดูแลระบบ",
+    new_student: "เพิ่มนักเรียนใหม่",
+    new_user: "เพิ่มผู้ใช้ใหม่",
+    manage_students: "จัดการนักเรียน",
+    manage_users: "จัดการผู้ใช้",
+    manage_certificates: "จัดการใบรับรอง",
+    school_calendar: "ปฏิทินโรงเรียน",
+    search_students: "ค้นหานักเรียนด้วยชื่อ...",
+    total_enrolled: "นักเรียนทั้งหมด",
+    active_students: "กำลังเรียนอยู่",
+    stopped_resigned: "หยุดเรียน / ลาออก",
+    my_students: "นักเรียนของฉัน",
+    my_schedule: "ตารางสอนของฉัน",
+    welcome: "ยินดีต้อนรับ",
+    hours_balance: "ยอดชั่วโมงเรียน",
+    total_registered: "ชั่วโมงลงทะเบียน",
+    hours_used: "ชั่วโมงที่ใช้ไป",
+    remaining: "ชั่วโมงคงเหลือ",
+    my_payments: "การชำระเงินของฉัน",
+    view_billing_history: "ดูประวัติการชำระเงิน",
+    official_certificate: "ใบประกาศนียบัตร",
+    view_diploma: "ดูใบประกาศนียบัตร",
+    my_report_cards: "รายงานผลการเรียน",
+    add_package: "เพิ่มแพ็กเกจ",
+    payments_billing: "การชำระเงินและบิล",
+    attendance_summary: "สรุปการเข้าเรียน",
+    advanced_summary: "สรุปขั้นสูง",
+    attendance_tracking: "บันทึกการเข้าเรียนและชั่วโมง",
+    todays_classes: "ชั้นเรียนของวันนี้",
+    write_report: "เขียนรายงาน",
+    lesson_summary: "สรุปบทเรียน",
+    homework: "การบ้าน",
+    teacher_comment: "ความคิดเห็นของครู",
+    score_optional: "คะแนน (ไม่บังคับ)",
+    student_lesson_reports: "รายงานบทเรียนของนักเรียน",
+    save_report: "บันทึกรายงาน",
+    no_classes_today: "ไม่มีชั้นเรียนสำหรับวันนี้",
+    no_lesson_reports: "ยังไม่มีรายงานบทเรียน",
+    parent_report: "รายงานถึงผู้ปกครอง",
+    preview_parent_report: "ดูตัวอย่างรายงานผู้ปกครอง",
+    send_via_line: "ส่งผ่าน LINE",
+    send_via_email: "ส่งผ่านอีเมล",
+    homework_status: "สถานะการบ้าน",
+    submitted: "ส่งแล้ว",
+    submitted_late: "ส่งล่าช้า",
+    not_submitted: "ยังไม่ส่ง",
+    submission_date: "วันที่ส่ง",
+    remark: "หมายเหตุ",
+    lesson_topic: "หัวข้อบทเรียน",
+    assigned_date: "วันที่สั่งการบ้าน",
+    my_reports: "รายงานของฉัน",
+    filter_student: "กรองตามนักเรียน",
+    filter_month: "กรองตามเดือน",
+    filter_course: "กรองตามหลักสูตร",
+    all_students: "นักเรียนทั้งหมด",
+    all_months: "ทุกเดือน",
+    all_courses: "ทุกหลักสูตร",
+    upcoming_class: "ชั้นเรียนถัดไป",
+    view_full_schedule: "ดูตารางเรียนทั้งหมด",
+    course_progress: "ความคืบหน้าหลักสูตร",
+    attendance_record: "ประวัติการเข้าเรียน",
+    package_information: "ข้อมูลแพ็กเกจ",
+    contact_school: "ติดต่อโรงเรียน",
+    level: "ระดับ",
+    in_progress: "กำลังเรียน",
+    completed: "เสร็จสิ้น",
+    manage_courses: "จัดการหลักสูตร",
+    add_course: "เพิ่มหลักสูตร",
+    course_name: "ชื่อหลักสูตร"
+  }
+};
+
+const LanguageContext = React.createContext();
+const useTranslation = () => React.useContext(LanguageContext);
+
 // --- FORMATTER HELPER ---
 const formatTime = (totalDecimalHours) => {
   if (!totalDecimalHours || totalDecimalHours <= 0) return '0h';
@@ -157,6 +375,38 @@ const formatTime = (totalDecimalHours) => {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
+};
+
+// --- IMAGE COMPRESSION UTILITY ---
+const compressImage = (file, maxWidth = 1200, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Compress to JPEG to save space in Firestore (1MB Document Limit)
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
 };
 
 // --- API HELPERS ---
@@ -172,6 +422,81 @@ const loadScript = (src) => {
     script.onerror = reject;
     document.head.appendChild(script);
   });
+};
+
+const loadStyle = (href) => {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`link[href="${href}"]`)) {
+      resolve();
+      return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.onload = resolve;
+    link.onerror = reject;
+    document.head.appendChild(link);
+  });
+};
+
+// ==========================================
+// UTILS: reportFormatter.js
+// ==========================================
+const generateParentReportText = (studentName, teacherName, course, topic, date, summary, homework, hwAssignedDate, comment, score, hwStatus, hwDate, hwRemark) => {
+  let report = `Oxford School of Language\n\n`;
+  report += `Student: ${studentName}\n`;
+  report += `Teacher: ${teacherName}\n`;
+  report += `Course: ${course}\n`;
+  if (topic) report += `Lesson Topic: ${topic}\n`;
+  report += `Date: ${date}\n\n`;
+  report += `Lesson Summary:\n${summary}\n\n`;
+  
+  if (homework) {
+    report += `Homework:\n${homework}\n\n`;
+    if (hwAssignedDate) {
+       const ad = new Date(hwAssignedDate);
+       const displayAssigned = !isNaN(ad.getTime()) ? ad.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : hwAssignedDate;
+       report += `Assigned Date:\n${displayAssigned}\n\n`;
+    }
+    if (hwStatus) {
+      report += `Homework Status:\n${hwStatus}\n`;
+      if (hwDate && (hwStatus === 'Submitted' || hwStatus === 'Submitted Late')) {
+        // Format date simply for the report
+        const d = new Date(hwDate);
+        const displayDate = !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : hwDate;
+        report += `Submission Date:\n${displayDate}\n`;
+      }
+      if (hwRemark) {
+        report += `Remark:\n${hwRemark}\n`;
+      }
+      report += `\n`;
+    }
+  }
+  
+  if (comment) report += `Teacher Comment:\n${comment}\n`;
+  if (score) report += `\nScore: ${score}\n`;
+  
+  return report.trim();
+};
+
+// ==========================================
+// SERVICES: parentReportService.js
+// ==========================================
+const parentReportService = {
+  sendViaEmail: (report) => {
+    console.log(`[Service] Sending report ${report.id} via Email...`);
+    const subject = encodeURIComponent(`Oxford School Lesson Report - ${report.course}`);
+    const body = encodeURIComponent(report.parentReport || 'Please find the lesson report attached.');
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  },
+  sendViaLine: (report) => {
+    console.log(`[Service] Sending report ${report.id} via LINE...`);
+    const text = encodeURIComponent(report.parentReport || 'Lesson Report');
+    window.open(`https://line.me/R/msg/text/?${text}`, '_blank', 'noopener,noreferrer');
+  },
+  publishToPortal: (reportId) => {
+    console.log(`[Service] Publishing report ${reportId} to Parent Portal...`);
+  }
 };
 
 const generateInitialReportData = (studentName = '', course = 'PHONICS', level = '1') => {
@@ -230,9 +555,9 @@ const generateInitialReportData = (studentName = '', course = 'PHONICS', level =
 };
 
 const defaultCertSettings = {
-  name: { x: 380, y: 360, size: 54 },
-  date: { x: 190, y: 647, size: 19 },
-  code: { x: 420, y: 730, size: 10 }
+  name: { x: 220, y: 350, size: 48, color: '#ea580c', font: 'serif' },
+  date: { x: 210, y: 665, size: 18, color: '#213568', font: 'serif' },
+  code: { x: 335, y: 735, size: 11, color: '#213568', font: 'sans-serif' }
 };
 
 function getInitialDb() {
@@ -240,6 +565,7 @@ function getInitialDb() {
     adminCalendarUrl: '',
     certificateTemplate: null, 
     certificateSettings: defaultCertSettings,
+    courses: DEFAULT_COURSES,
     events: [
       { id: 'e1', title: 'School Holiday', date: new Date().toISOString().split('T')[0], startTime: '', endTime: '', type: 'global', color: 'bg-red-500' }
     ],
@@ -268,11 +594,12 @@ function getInitialDb() {
           { dayOfWeek: 3, startTime: '17:00', endTime: '18:30' }
         ],
         registeredHours: 0, 
+        credit_balance: 0,
         customInfo: [
           { id: 2, label: 'Birthday', value: '12 May 2015', isPrivate: false }
         ],
         attendance: [
-          { id: 'att0', date: new Date().toISOString().split('T')[0], startDate: new Date().toISOString().split('T')[0], endDate: '2024-12-31', status: 'added_package', hours: 30, remark: 'Initial Enrollment' },
+          { id: 'att0', date: new Date().toISOString().split('T')[0], startDate: new Date().toISOString().split('T')[0], endDate: '2024-12-31', status: 'added_package', hours: 30, hourlyRate: 500, appliedCredit: 0, remark: 'Initial Enrollment' },
           { id: 'att1', date: new Date().toISOString().split('T')[0], status: 'present', hours: 1.5, remark: 'Great participation' }
         ],
         profileImage: null,
@@ -310,30 +637,175 @@ const LogoUploader = ({ image, width, onUpload, placeholderText, themeColor }) =
   );
 };
 
-function DraggableElement({ isEditMode, position, size, text, color, borderStyle, onUpdate }) {
-  const [pos, setPos] = useState(position);
-  const [fontSize, setFontSize] = useState(size);
+function DraggableElement({ isEditMode, label, position, size, color, fontFamily, text, onUpdate }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [pos, setPos] = useState(position || { x: 50, y: 50 });
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
 
-  useEffect(() => { setPos(position); setFontSize(size); }, [position, size]);
+  useEffect(() => {
+    if (position) setPos(position);
+  }, [position]);
 
   const handleMouseDown = (e) => {
     if (!isEditMode) return;
+    e.preventDefault();
     setIsDragging(true);
+    setStartPos({ x: e.clientX - pos.x, y: e.clientY - pos.y });
   };
 
-  return null;
+  const handleMouseMove = (e) => {
+    if (!isDragging || !isEditMode) return;
+    setPos({ x: e.clientX - startPos.x, y: e.clientY - startPos.y });
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging && isEditMode) {
+      setIsDragging(false);
+      if (onUpdate) onUpdate({ x: pos.x, y: pos.y });
+    }
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, startPos, isEditMode, pos, size, onUpdate]);
+
+  return (
+    <div 
+      style={{ 
+        position: 'absolute', left: pos.x, top: pos.y, 
+        fontSize: `${size}px`, 
+        cursor: isEditMode ? 'move' : 'default',
+        border: isEditMode ? '2px dashed #6366f1' : 'none',
+        padding: isEditMode ? '4px' : '0',
+        whiteSpace: 'nowrap',
+        userSelect: 'none',
+        color: color || '#213568',
+        fontWeight: 'bold',
+        fontFamily: fontFamily || 'serif',
+        zIndex: 50
+      }}
+      onMouseDown={handleMouseDown}
+      className={isEditMode ? 'hover:bg-indigo-50/30' : ''}
+    >
+      {text}
+      {isEditMode && <div className="absolute -top-6 left-0 text-[11px] bg-indigo-600 text-white px-1.5 py-0.5 rounded shadow-sm no-pdf print:hidden">{label}</div>}
+    </div>
+  );
 }
 
-function NativeCalendar() {
+function NativeCalendar({ events = [] }) {
+  const calendarRef = useRef(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      loadStyle('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css'),
+      loadScript('https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js')
+    ])
+      .then(() => {
+        if (isMounted) setIsLoaded(true);
+      })
+      .catch(err => console.error("Failed to load FullCalendar", err));
+    return () => { isMounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !calendarRef.current || !window.FullCalendar) return;
+
+    const mappedEvents = events.map(e => {
+        // Handle Auto-Generated Recurring Class Events
+        if (e.daysOfWeek) {
+            return {
+                id: e.id,
+                title: e.title,
+                daysOfWeek: e.daysOfWeek,
+                startTime: e.startTime,
+                endTime: e.endTime,
+                startRecur: e.startRecur,
+                endRecur: e.endRecur,
+                backgroundColor: e.backgroundColor || '#3b82f6',
+                borderColor: e.borderColor || '#2563eb',
+                allDay: false
+            };
+        }
+
+        // Handle Standard Manual Events
+        const start = e.startTime ? `${e.date}T${e.startTime}` : e.date;
+        const end = e.endTime ? `${e.date}T${e.endTime}` : undefined;
+        
+        let color = '#6366f1'; 
+        if (e.color?.includes('red')) color = '#ef4444';
+        else if (e.color?.includes('green')) color = '#22c55e';
+        else if (e.color?.includes('blue')) color = '#3b82f6';
+        else if (e.color?.includes('yellow') || e.color?.includes('amber')) color = '#f59e0b';
+        else if (e.color?.includes('purple')) color = '#a855f7';
+        
+        return {
+            id: e.id,
+            title: e.title,
+            start,
+            end,
+            backgroundColor: color,
+            borderColor: color,
+            allDay: !e.startTime
+        };
+    });
+
+    const calendar = new window.FullCalendar.Calendar(calendarRef.current, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridThreeDay,timeGridDay'
+      },
+      views: {
+        timeGridThreeDay: {
+          type: 'timeGrid',
+          duration: { days: 3 },
+          buttonText: '3 Day'
+        }
+      },
+      events: mappedEvents,
+      height: '100%',
+      buttonText: {
+        today: 'Today',
+        month: 'Month',
+        week: 'Week',
+        day: 'Day'
+      }
+    });
+
+    calendar.render();
+
+    return () => {
+      calendar.destroy();
+    };
+  }, [isLoaded, events]);
+
   return (
-    <div className="p-8 text-center bg-gray-50 rounded-xl border border-gray-200 h-full flex items-center justify-center">
-      <p className="text-gray-500 font-medium">Calendar component temporarily disabled.</p>
+    <div className="bg-white rounded-xl h-full w-full p-4 border border-gray-200 shadow-sm overflow-hidden">
+      {!isLoaded ? (
+        <div className="h-full flex flex-col items-center justify-center space-y-3">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-gray-500">Loading Calendar...</p>
+        </div>
+      ) : (
+        <div ref={calendarRef} className="h-full w-full font-sans text-sm"></div>
+      )}
     </div>
   );
 }
 
 function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser }) {
+  const { t } = useTranslation();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState('present');
   const [compensationType, setCompensationType] = useState('discount');
@@ -344,6 +816,7 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
 
   const attendance = student?.attendance || [];
   const registeredHours = Number(student?.registeredHours) || 0;
+  const creditBalance = student?.credit_balance || 0;
 
   const addedPackageHours = attendance.reduce((sum, record) => {
     if (record.status === 'added_package' || record.status === 'renewal') return sum + Number(record.hours || 0);
@@ -357,24 +830,9 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
     return sum;
   }, 0);
 
-  const discountEligibleHours = attendance.reduce((sum, record) => {
-    if (record.status === 'teacher_absent' && record.compensationType !== 'makeup') {
-      return sum + Number(record.hours || 0);
-    }
-    return sum;
-  }, 0);
-
   // --- NEW FINANCIAL LOGIC ---
   const latestPackage = attendance.find(r => r.status === 'added_package' || r.status === 'renewal');
   const currentHourlyRate = latestPackage ? Number(latestPackage.hourlyRate || 0) : 0;
-
-  const owedDiscountTHB = attendance.reduce((sum, record) => {
-    if (record.status === 'teacher_absent' && record.compensationType !== 'makeup') {
-      // Use statically saved owedTHB if it exists, otherwise fallback to dynamic calculation
-      return sum + (record.owedTHB !== undefined ? record.owedTHB : (Number(record.hours || 0) * currentHourlyRate));
-    }
-    return sum;
-  }, 0);
   // ---------------------------
 
   const totalRegistered = registeredHours + addedPackageHours;
@@ -386,16 +844,17 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
 
     const calculatedHours = status === 'absent' || status === 'student_absent' ? 0 : Number(inputHours) + (Number(inputMinutes) / 60);
 
-    // --- LOCK IN THB AT TIME OF RECORD ---
     let recordHourlyRate = 0;
     let owedTHB = 0;
     let finalCompType = null;
+    let newCreditBalance = creditBalance;
     
     if (status === 'teacher_absent') {
        finalCompType = compensationType;
        if (compensationType === 'discount') {
          recordHourlyRate = currentHourlyRate;
          owedTHB = calculatedHours * recordHourlyRate;
+         newCreditBalance += owedTHB; // Add to stored credit balance
        }
     }
 
@@ -410,7 +869,7 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
       remark
     };
 
-    onUpdate({ attendance: [newRecord, ...attendance] });
+    onUpdate({ attendance: [newRecord, ...attendance], credit_balance: newCreditBalance });
     setRemark(''); 
     setCompensationType('discount');
   };
@@ -418,10 +877,18 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
   const handleDelete = (id) => {
     showModal('DELETE_RECORD', {
       onSubmit: (reason) => {
+        const recordToDelete = attendance.find(a => a.id === id);
+        let newCreditBalance = creditBalance;
+
+        // Deduct from credit balance if we void an unused teacher absence
+        if (recordToDelete && recordToDelete.status === 'teacher_absent' && recordToDelete.compensationType === 'discount' && recordToDelete.owedTHB) {
+           newCreditBalance = Math.max(0, newCreditBalance - recordToDelete.owedTHB);
+        }
+
         const updatedAttendance = attendance.map(a => 
           a.id === id ? { ...a, status: 'deleted', deleteRemark: reason, deletedBy: currentUser?.name || 'Admin' } : a
         );
-        onUpdate({ attendance: updatedAttendance });
+        onUpdate({ attendance: updatedAttendance, credit_balance: newCreditBalance });
       }
     });
   };
@@ -432,14 +899,31 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
       <div className="bg-gray-50 border-b border-gray-200 p-4 sm:p-5 flex justify-between items-center">
         <h3 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileText className="text-indigo-500" size={22}/> Attendance & Hours Tracking
+          <FileText className="text-indigo-500" size={22}/> {t('attendance_tracking')}
         </h3>
         {canEdit && (
           <button 
+            type="button"
             onClick={() => {
               showModal('ADD_PACKAGE', {
                 schedule: student?.structuredSchedule || [],
-                onSubmit: ({ startDate, endDate, hours, remark, hourlyRate, packageStartDate, packageEndDate }) => {
+                creditBalance: creditBalance,
+                onSubmit: ({ startDate, endDate, hours, remark, hourlyRate, packageStartDate, packageEndDate, appliedCredit, manualDiscount, totalDiscount, netPrice, vatRate, vatAmount, totalPayable }) => {
+                  let newCreditBalance = creditBalance;
+                  let finalRemark = remark;
+                  
+                  // Apply saved credit to the new package
+                  if (appliedCredit > 0) {
+                     newCreditBalance -= appliedCredit;
+                     finalRemark = (remark ? remark + ' ' : '') + `[Applied ${appliedCredit.toLocaleString()} THB Credit]`;
+                  }
+                  if (manualDiscount > 0) {
+                     finalRemark = (finalRemark ? finalRemark + ' ' : '') + `[Manual Discount ${manualDiscount.toLocaleString()} THB]`;
+                  }
+                  if (vatRate > 0) {
+                     finalRemark = (finalRemark ? finalRemark + ' ' : '') + `[+7% VAT]`;
+                  }
+
                   const newRecord = {
                     id: `att_${Date.now()}`,
                     date: startDate,
@@ -450,20 +934,27 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
                     status: 'added_package',
                     hours: Number(hours),
                     hourlyRate: Number(hourlyRate),
-                    remark
+                    appliedCredit: Number(appliedCredit),
+                    manualDiscount: Number(manualDiscount),
+                    totalDiscount: Number(totalDiscount),
+                    netPrice: Number(netPrice),
+                    vatRate: Number(vatRate),
+                    vatAmount: Number(vatAmount),
+                    totalPayable: Number(totalPayable),
+                    remark: finalRemark
                   };
-                  onUpdate({ attendance: [newRecord, ...attendance] });
+                  onUpdate({ attendance: [newRecord, ...attendance], credit_balance: newCreditBalance });
                 }
               });
             }}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 transition-colors"
           >
-            <Plus size={16} /> <span className="hidden sm:inline">Add Package</span><span className="sm:hidden">Add Pkg</span>
+            <Plus size={16} /> <span className="hidden sm:inline">{t('add_package')}</span><span className="sm:hidden">Add Pkg</span>
           </button>
         )}
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-gray-100 border-b border-gray-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100 border-b border-gray-200">
         <div className="p-4 flex flex-col items-center justify-center bg-white relative">
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total Package</div>
           <div className="text-2xl font-extrabold text-gray-800">{formatTime(totalRegistered)}</div>
@@ -475,13 +966,6 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
         <div className={`p-4 flex flex-col items-center justify-center ${remainingHours > 0 ? 'bg-green-50/50' : 'bg-red-50/50'}`}>
           <div className={`text-xs font-bold uppercase tracking-widest mb-1 ${remainingHours > 0 ? 'text-green-600' : 'text-red-500'}`}>Remaining Balance</div>
           <div className={`text-2xl font-extrabold ${remainingHours > 0 ? 'text-green-700' : 'text-red-600'}`}>{formatTime(remainingHours)}</div>
-        </div>
-        <div className="p-4 flex flex-col items-center justify-center bg-amber-50/50 relative group">
-          <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1 text-center">Owed Discount<br/>(Teacher Absent)</div>
-          <div className="text-2xl font-extrabold text-amber-600">{formatTime(discountEligibleHours)}</div>
-          {owedDiscountTHB > 0 && (
-             <div className="text-sm font-bold text-amber-700 mt-1">{owedDiscountTHB.toLocaleString()} THB</div>
-          )}
         </div>
       </div>
 
@@ -613,7 +1097,30 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
                       {record.status !== 'deleted' && (
                         <button onClick={() => showModal('EDIT_RECORD', {
                           record,
-                          onSubmit: (updated) => onUpdate({ attendance: attendance.map(a => a.id === record.id ? updated : a) })
+                          onSubmit: (updated) => {
+                             const oldRecord = attendance.find(a => a.id === record.id);
+                             let newCreditBalance = creditBalance;
+                             
+                             // Reverse old credit
+                             if (oldRecord.status === 'teacher_absent' && oldRecord.compensationType === 'discount') {
+                                newCreditBalance = Math.max(0, newCreditBalance - (oldRecord.owedTHB || 0));
+                             }
+                             
+                             // Apply new credit
+                             if (updated.status === 'teacher_absent' && updated.compensationType === 'discount') {
+                                const rate = oldRecord.hourlyRate || currentHourlyRate; 
+                                updated.hourlyRate = rate;
+                                updated.owedTHB = updated.hours * rate;
+                                newCreditBalance += updated.owedTHB;
+                             } else {
+                                updated.owedTHB = 0;
+                             }
+
+                             onUpdate({ 
+                                attendance: attendance.map(a => a.id === record.id ? updated : a),
+                                credit_balance: newCreditBalance
+                             });
+                          }
                         })} className="text-indigo-400 hover:text-indigo-600 p-1 rounded hover:bg-indigo-50 transition-colors mr-1" title="Edit Record">
                           <Edit3 size={16} />
                         </button>
@@ -635,6 +1142,106 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function StudentPayments({ student, onClose }) {
+  const { t } = useTranslation();
+  const attendance = student?.attendance || [];
+  const creditBalance = student?.credit_balance || 0;
+
+  const invoices = attendance.filter(r => r.status === 'added_package' || r.status === 'renewal');
+  
+  let totalPaid = 0;
+  const invoiceData = invoices.map(inv => {
+     const coursePrice = (Number(inv.hours) || 0) * (Number(inv.hourlyRate) || 0);
+     
+     // Fallback to regex extraction if appliedCredit is missing from old records
+     let applied = Number(inv.appliedCredit) || 0;
+     if (!inv.appliedCredit && inv.remark && inv.remark.includes('[Applied')) {
+         const match = inv.remark.match(/\[Applied ([\d,]+) THB Discount\]/);
+         if (match) applied = parseInt(match[1].replace(/,/g, ''), 10);
+     }
+     
+     const manualDisc = Number(inv.manualDiscount) || 0;
+     const totalDisc = inv.totalDiscount !== undefined ? Number(inv.totalDiscount) : applied + manualDisc;
+     
+     const netPrice = inv.netPrice !== undefined ? Number(inv.netPrice) : Math.max(0, coursePrice - totalDisc);
+     const vatAmount = Number(inv.vatAmount) || 0;
+     const payable = inv.totalPayable !== undefined ? Number(inv.totalPayable) : (coursePrice - applied); // fallback for old records
+     
+     totalPaid += payable;
+     
+     return { ...inv, coursePrice, totalDisc, netPrice, vatAmount, payable };
+  });
+
+  return (
+    <div className="w-full max-w-4xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 mb-12">
+       <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><CreditCard size={24} /> {t('payments_billing')}</h2>
+            <p className="text-gray-500 mt-1">Financial history for {student?.name}</p>
+          </div>
+          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
+            <ArrowLeft size={18} /> Back
+          </button>
+       </div>
+
+       <div className="p-8 bg-gray-50 flex flex-col sm:flex-row gap-6 border-b border-gray-200">
+          <div className="flex-1 bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+             <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total Paid</p>
+                <p className="text-3xl font-extrabold text-gray-800">{totalPaid.toLocaleString()} <span className="text-xl">THB</span></p>
+             </div>
+             <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><TrendingUp size={24}/></div>
+          </div>
+          <div className="flex-1 bg-white p-6 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between">
+             <div>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">Owed Discount (Credit)</p>
+                <p className="text-3xl font-extrabold text-amber-600">{creditBalance.toLocaleString()} <span className="text-xl">THB</span></p>
+             </div>
+             <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center"><Tag size={24}/></div>
+          </div>
+       </div>
+
+       <div className="p-8">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Invoice & Payment History</h3>
+          {invoiceData.length > 0 ? (
+             <div className="overflow-hidden rounded-xl border border-gray-300">
+               <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-100 text-gray-600 border-b border-gray-300">
+                     <tr>
+                        <th className="p-4 font-bold uppercase tracking-wider">Date</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-center">Hours</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-right">Base Price</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-right">Discount</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-right">VAT</th>
+                        <th className="p-4 font-bold uppercase tracking-wider text-right">Total Paid</th>
+                        <th className="p-4 font-bold uppercase tracking-wider">Remarks</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                     {invoiceData.map(inv => (
+                        <tr key={inv.id} className="bg-white hover:bg-gray-50">
+                           <td className="p-4 font-medium text-gray-800">{inv.date}</td>
+                           <td className="p-4 text-center text-gray-600">{inv.hours}h</td>
+                           <td className="p-4 text-right text-gray-600">{inv.coursePrice.toLocaleString()} ฿</td>
+                           <td className="p-4 text-right text-green-600">{inv.totalDisc > 0 ? `-${inv.totalDisc.toLocaleString()} ฿` : '-'}</td>
+                           <td className="p-4 text-right text-gray-600">{inv.vatAmount > 0 ? `+${inv.vatAmount.toLocaleString()} ฿` : '-'}</td>
+                           <td className="p-4 text-right font-bold text-indigo-700">{inv.payable.toLocaleString()} ฿</td>
+                           <td className="p-4 text-gray-500 text-xs max-w-[200px] truncate" title={inv.remark}>{inv.remark || '-'}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+             </div>
+          ) : (
+             <div className="p-8 text-center text-gray-500 border border-gray-200 rounded-xl bg-gray-50">
+                No invoice history found.
+             </div>
+          )}
+       </div>
     </div>
   );
 }
@@ -1283,14 +1890,32 @@ function FinalReportView({ data, onImageUpload, onRemoveImage, onLogoUpload, onS
           <div className={`ml-24 flex-1 flex flex-col ${isSpelling ? 'pt-6 px-10 pb-6' : 'pt-8 px-12 pb-12'} relative bg-white z-20 h-[1123px] box-border`}>
             <div className={`flex justify-center ${isSpelling ? 'mb-2' : 'mb-10'} relative shrink-0`}>
               <div className="relative">
-                <div className={`rounded-full border-4 border-gray-300 overflow-hidden relative shadow-inner group flex items-center justify-center bg-[#e0f2fe] ${isSpelling ? 'w-20 h-20' : 'w-32 h-32'}`}>
+                <div 
+                  className="group relative shadow-inner student-photo" 
+                  style={{
+                    width: isSpelling ? '80px' : '120px',
+                    height: isSpelling ? '80px' : '120px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    border: '4px solid #d1d5db',
+                    backgroundColor: '#e0f2fe'
+                  }}
+                >
                   {canEdit && (
                      <input type="file" accept="image/*" onChange={onImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 no-pdf print:hidden" />
                   )}
                   {data?.profileImage ? (
-                    <img src={data.profileImage} alt="Student" className="w-full h-full object-cover z-10 relative" />
+                    <img 
+                      src={data.profileImage} 
+                      alt="Student" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      className="z-10 relative" 
+                    />
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="w-full h-full z-10 relative pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style={{ width: '100%', height: '100%', display: 'block' }} className="z-10 relative pointer-events-none">
                       <rect width="100" height="100" fill="#e0f2fe" />
                       <path d="M 30 35 A 10 10 0 0 1 45 20 A 15 15 0 0 1 70 30 A 10 10 0 0 1 70 45 L 30 45 Z" fill="white" />
                       <path d="M -10 65 Q 25 45 60 70 T 110 60 L 110 100 L -10 100 Z" fill="#a3e635" />
@@ -1305,9 +1930,9 @@ function FinalReportView({ data, onImageUpload, onRemoveImage, onLogoUpload, onS
                 </div>
                 
                 {data?.profileImage && canEdit && (
-                  <>
-                    <button onClick={onRemoveImage} className="absolute top-0 right-0 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors z-30 transform translate-x-2 -translate-y-2 border-2 border-white no-pdf print:hidden" title="Remove Photo"><Trash2 size={16} /></button>
-                  </>
+                  <button onClick={onRemoveImage} className="absolute top-0 right-0 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors z-30 transform translate-x-2 -translate-y-2 border-2 border-white no-pdf print:hidden" title="Remove Photo">
+                    <Trash2 size={16} />
+                  </button>
                 )}
               </div>
             </div>
@@ -1427,33 +2052,6 @@ function FinalReportView({ data, onImageUpload, onRemoveImage, onLogoUpload, onS
   );
 }
 
-function AddUserForm({ onSubmit, onCancel }) {
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('teacher');
-
-  return (
-    <form onSubmit={e => { e.preventDefault(); onSubmit({ name, username, password, role }); }} className="p-6">
-      <h3 className="text-xl font-bold mb-6 text-gray-900">Add New User</h3>
-      <div className="space-y-4 mb-8">
-        <div><label className="block text-sm font-bold mb-1 text-gray-700">Full Name</label><input required value={name} onChange={e=>setName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
-        <div>
-           <label className="block text-sm font-bold mb-1 text-gray-700">Role</label>
-           <select value={role} onChange={e=>setRole(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-gray-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer">
-             <option value="student">Student</option>
-             <option value="teacher">Teacher</option>
-             <option value="superadmin">Super Admin</option>
-           </select>
-        </div>
-        <div><label className="block text-sm font-bold mb-1 text-gray-700">Login ID / Username</label><input required value={username} onChange={e=>setUsername(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
-        <div><label className="block text-sm font-bold mb-1 text-gray-700">Password</label><input required value={password} onChange={e=>setPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
-      </div>
-      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button><button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold">Add User</button></div>
-    </form>
-  );
-}
-
 function AddStudentForm({ onSubmit, onCancel }) {
   const [name, setName] = useState('');
   return (
@@ -1463,16 +2061,144 @@ function AddStudentForm({ onSubmit, onCancel }) {
         <label className="block text-sm font-bold mb-1 text-gray-700">Full Name</label>
         <input required value={name} onChange={e=>setName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" autoFocus />
       </div>
-      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button><button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold">Create Student</button></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button><button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold primary-action">Create Student</button></div>
     </form>
   );
 }
 
-function AddPackageForm({ schedule, onSubmit, onCancel }) {
+function AddUserForm({ onSubmit, onCancel }) {
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('teacher');
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSubmit({ name, username, password, role }); }} className="p-6">
+      <h3 className="text-xl font-bold mb-6 text-gray-900">Add New Staff User</h3>
+      <div className="space-y-4 mb-8">
+        <div><label className="block text-sm font-bold mb-1 text-gray-700">Full Name</label><input required value={name} onChange={e=>setName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
+        <div>
+           <label className="block text-sm font-bold mb-1 text-gray-700">Role</label>
+           <select value={role} onChange={e=>setRole(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-gray-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+             <option value="teacher">Teacher</option>
+             <option value="general_admin">General Admin</option>
+             <option value="superadmin">Super Admin</option>
+           </select>
+        </div>
+        <div><label className="block text-sm font-bold mb-1 text-gray-700">Login ID / Username</label><input required value={username} onChange={e=>setUsername(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
+        <div><label className="block text-sm font-bold mb-1 text-gray-700">Password</label><input required value={password} onChange={e=>setPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
+      </div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button><button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold primary-action">Add User</button></div>
+    </form>
+  );
+}
+
+function CreateStudentAccountForm({ student, onSubmit, onCancel }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  return (
+    <form onSubmit={e => { 
+      e.preventDefault(); 
+      onSubmit({ 
+        id: `u_${Date.now()}`, 
+        name: student.name, 
+        username, 
+        password, 
+        role: 'student', 
+        studentId: student.id, 
+        profileImage: null 
+      }); 
+    }} className="p-6">
+      <h3 className="text-xl font-bold mb-2 text-gray-900">Create Student Login</h3>
+      <p className="text-sm text-gray-500 mb-6">Create portal access for <span className="font-bold text-indigo-600">{student.name}</span></p>
+      <div className="space-y-4 mb-8">
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Username</label>
+          <input required value={username} onChange={e=>setUsername(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="e.g. student_123" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Password</label>
+          <input required value={password} onChange={e=>setPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button>
+        <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold primary-action">Create Account</button>
+      </div>
+    </form>
+  );
+}
+
+function CreateCertificateForm({ students, onSubmit, onCancel }) {
+  const [studentId, setStudentId] = useState('');
+  const eligibleStudents = (students || []).filter(s => s.certificateStatus !== 'approved' && s.status !== 'resigned').sort((a,b) => a.name.localeCompare(b.name));
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSubmit(studentId); }} className="p-6">
+      <h3 className="text-xl font-bold mb-2 text-gray-900">Issue New Certificate</h3>
+      <p className="text-sm text-gray-500 mb-6">Manually grant a certificate to an eligible active student.</p>
+      <div className="mb-8">
+        <label className="block text-sm font-bold mb-1 text-gray-700">Select Student</label>
+        <select required value={studentId} onChange={e=>setStudentId(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
+          <option value="">-- Choose a student --</option>
+          {eligibleStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Cancel</button>
+        <button type="submit" disabled={!studentId} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold primary-action disabled:opacity-50 disabled:cursor-not-allowed">Issue Certificate</button>
+      </div>
+    </form>
+  );
+}
+
+function StudentLoginManager({ student, users, onSaveUser, onDeleteUser, showModal }) {
+  const linkedUser = users.find(u => u.studentId === student.id && u.role === 'student');
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-6">
+      <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
+        <Lock className="text-indigo-500" size={20}/> Student Portal Access
+      </h3>
+      {linkedUser ? (
+        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex flex-col gap-3 overflow-hidden">
+           <div className="min-w-0">
+             <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Login Credentials</div>
+             <div className="text-sm font-semibold text-gray-800 truncate" title={linkedUser.username}>Username: <span className="font-bold text-indigo-700">{linkedUser.username}</span></div>
+             <div className="text-sm font-semibold text-gray-800 truncate" title={linkedUser.password}>Password: <span className="font-mono text-gray-600">{linkedUser.password}</span></div>
+           </div>
+           <div className="flex gap-2 w-full mt-1">
+              <button onClick={() => showModal('USER_SETTINGS', { user: linkedUser, onSubmit: onSaveUser })} className="flex-1 bg-white text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-indigo-50 transition-colors shadow-sm">Edit</button>
+              <button onClick={() => showModal('CONFIRM', { title: 'Remove Access', message: 'Revoke student portal access? The profile will remain safe.', onConfirm: () => onDeleteUser(linkedUser.id)})} className="flex-1 bg-white text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-red-50 transition-colors shadow-sm">Revoke</button>
+           </div>
+        </div>
+      ) : (
+        <div className="text-center p-5 bg-gray-50 rounded-xl border border-gray-200">
+           <p className="text-sm text-gray-500 font-medium mb-3">No portal access account created for this student yet.</p>
+           <button onClick={() => showModal('CREATE_STUDENT_ACCOUNT', { student, onSubmit: onSaveUser })} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm w-full">Create Login Account</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddPackageForm({ schedule, creditBalance = 0, onSubmit, onCancel }) {
   const [packageStartDate, setPackageStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [packageEndDate, setPackageEndDate] = useState('');
+  const [packageEndDate, setPackageEndDate] = useState(() => {
+     // Default end date to the last day of the current month
+     const d = new Date();
+     d.setMonth(d.getMonth() + 1);
+     d.setDate(0);
+     return d.toISOString().split('T')[0];
+  });
   const [inputHourlyRate, setInputHourlyRate] = useState('');
+  const [manualDiscount, setManualDiscount] = useState('');
+  const [vatRate, setVatRate] = useState(0);
   const [remark, setRemark] = useState('');
+  const [applyCredit, setApplyCredit] = useState(creditBalance > 0); // Auto-apply if credit exists
+  const [overrideHours, setOverrideHours] = useState('');
+  const [excludedDates, setExcludedDates] = useState([]); // Array of dateStr to exclude
   
   const formatDisplayDate = (dateString) => {
     if (!dateString) return '';
@@ -1491,25 +2217,55 @@ function AddPackageForm({ schedule, onSubmit, onCancel }) {
     return Math.max(0, (eh + em / 60) - (sh + sm / 60));
   };
 
-  const calc = React.useMemo(() => {
-    let totalSessions = 0;
-    let totalHours = 0;
-    if (packageStartDate && packageEndDate && schedule && schedule.length > 0) {
-        const start = new Date(packageStartDate);
-        const end = new Date(packageEndDate);
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
-            const scheduleMap = new Map(schedule.map(s => [s.dayOfWeek, getDurationHours(s.startTime, s.endTime)]));
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const day = d.getDay();
-                if (scheduleMap.has(day)) {
-                    totalSessions++;
-                    totalHours += scheduleMap.get(day);
-                }
-            }
+  // 1. Generate all theoretical classes based on schedule and date range
+  const generatedSessions = React.useMemo(() => {
+    if (!packageStartDate || !packageEndDate || !schedule || schedule.length === 0) return [];
+    const start = new Date(packageStartDate);
+    const end = new Date(packageEndDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+
+    const scheduleMap = new Map(schedule.map(s => [s.dayOfWeek, s]));
+    const sessions = [];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay();
+        if (scheduleMap.has(dayOfWeek)) {
+            const sched = scheduleMap.get(dayOfWeek);
+            sessions.push({
+                dateStr: d.toISOString().split('T')[0],
+                dayOfWeek,
+                startTime: sched.startTime,
+                endTime: sched.endTime,
+                hours: getDurationHours(sched.startTime, sched.endTime)
+            });
         }
     }
-    return { totalSessions, totalHours };
+    return sessions;
   }, [packageStartDate, packageEndDate, schedule]);
+
+  // 2. Filter out dates the admin unchecked
+  const activeSessions = React.useMemo(() => {
+    return generatedSessions.filter(s => !excludedDates.includes(s.dateStr));
+  }, [generatedSessions, excludedDates]);
+
+  // 3. Auto-calculate total hours from active sessions
+  const calculatedHours = React.useMemo(() => {
+    return activeSessions.reduce((sum, s) => sum + s.hours, 0);
+  }, [activeSessions]);
+
+  // 4. Sync auto-calculated hours to the editable field whenever active dates change
+  useEffect(() => {
+    setOverrideHours(calculatedHours > 0 ? calculatedHours.toString() : '');
+  }, [calculatedHours]);
+
+  const finalHours = Number(overrideHours) || 0;
+  const coursePrice = finalHours * Number(inputHourlyRate || 0);
+  const appliedCreditAmount = applyCredit ? Math.min(coursePrice, creditBalance) : 0;
+  const manualDiscountAmount = Number(manualDiscount) || 0;
+  const totalDiscount = appliedCreditAmount + manualDiscountAmount;
+  const netPrice = Math.max(0, coursePrice - totalDiscount);
+  const vatAmount = netPrice * (vatRate / 100);
+  const totalPayable = netPrice + vatAmount;
 
   return (
     <form onSubmit={e => { 
@@ -1519,9 +2275,16 @@ function AddPackageForm({ schedule, onSubmit, onCancel }) {
         endDate: formatDisplayDate(packageEndDate), 
         packageStartDate,
         packageEndDate,
-        hours: Number(calc.totalHours), 
+        hours: finalHours, 
         hourlyRate: Number(inputHourlyRate), 
-        remark 
+        remark,
+        appliedCredit: appliedCreditAmount,
+        manualDiscount: manualDiscountAmount,
+        totalDiscount,
+        netPrice,
+        vatRate,
+        vatAmount,
+        totalPayable
       }); 
     }} className="p-6">
       <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><Award className="text-indigo-600" /> Add Course Package</h3>
@@ -1530,21 +2293,82 @@ function AddPackageForm({ schedule, onSubmit, onCancel }) {
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-bold mb-1">Start Date</label>
-          <input required type="date" value={packageStartDate} onChange={e=>setPackageStartDate(e.target.value)} className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <input 
+             required 
+             type="date" 
+             value={packageStartDate} 
+             onChange={e => {
+                const val = e.target.value;
+                setPackageStartDate(val);
+                // Auto-bump the End Date if Start Date surpasses it
+                if (val && packageEndDate && val > packageEndDate) {
+                   const d = new Date(val);
+                   d.setMonth(d.getMonth() + 1);
+                   d.setDate(0);
+                   setPackageEndDate(d.toISOString().split('T')[0]);
+                }
+             }} 
+             className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
+          />
         </div>
         <div>
           <label className="block text-sm font-bold mb-1">End Date</label>
-          <input required type="date" value={packageEndDate} onChange={e=>setPackageEndDate(e.target.value)} className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <input 
+             required 
+             type="date" 
+             min={packageStartDate} // Prevent selecting a date before Start Date
+             value={packageEndDate} 
+             onChange={e=>setPackageEndDate(e.target.value)} 
+             className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" 
+          />
         </div>
       </div>
+
+      {/* NEW SMART PREVIEW LIST */}
+      {generatedSessions.length > 0 && (
+         <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">
+              Class Schedule Preview <span className="text-gray-400 font-normal text-xs">(Uncheck days student won't attend)</span>
+            </label>
+            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-1">
+               {generatedSessions.map(session => {
+                  const isChecked = !excludedDates.includes(session.dateStr);
+                  const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][session.dayOfWeek];
+                  return (
+                    <label key={session.dateStr} className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${isChecked ? 'bg-white shadow-sm border border-gray-200' : 'bg-gray-100 opacity-60'}`}>
+                       <input 
+                          type="checkbox" 
+                          checked={isChecked}
+                          onChange={(e) => {
+                             if (e.target.checked) {
+                                setExcludedDates(prev => prev.filter(d => d !== session.dateStr));
+                             } else {
+                                setExcludedDates(prev => [...prev, session.dateStr]);
+                             }
+                          }}
+                          className="w-4 h-4 text-indigo-600 rounded cursor-pointer"
+                       />
+                       <div className={`flex-1 text-sm font-medium ${isChecked ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
+                          {formatDisplayDate(session.dateStr)} ({dayName})
+                       </div>
+                       <div className={`text-sm font-bold ${isChecked ? 'text-indigo-600' : 'text-gray-400'}`}>
+                          {session.startTime} - {session.endTime} ({session.hours}h)
+                       </div>
+                    </label>
+                  )
+               })}
+            </div>
+            <div className="text-xs font-bold text-gray-600 mt-2 text-right">
+              Active Sessions: <span className="text-indigo-600">{activeSessions.length}</span> / {generatedSessions.length}
+            </div>
+         </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-bold mb-1">Total Hours</label>
-          <input readOnly type="number" value={calc.totalHours} className="w-full border rounded p-2 bg-gray-100 text-gray-700 cursor-not-allowed font-bold outline-none" placeholder="Auto-calculated" />
-          {calc.totalSessions > 0 && (
-            <p className="text-[11px] text-indigo-600 font-bold mt-1">({calc.totalSessions} sessions × {Number((calc.totalHours / calc.totalSessions).toFixed(2))}h)</p>
-          )}
-          {calc.totalSessions === 0 && packageStartDate && packageEndDate && (
+          <label className="block text-sm font-bold mb-1">Total Hours <span className="text-gray-400 font-normal text-xs">(Auto-calculated)</span></label>
+          <input required type="number" step="0.25" min="0" value={overrideHours} onChange={e=>setOverrideHours(e.target.value)} className="w-full border border-indigo-200 rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-900 bg-indigo-50/30" placeholder="e.g. 10" />
+          {generatedSessions.length === 0 && packageStartDate && packageEndDate && (
             <p className="text-[11px] text-amber-600 font-bold mt-1">No classes found in schedule</p>
           )}
         </div>
@@ -1553,11 +2377,43 @@ function AddPackageForm({ schedule, onSubmit, onCancel }) {
           <input required type="number" min="0" value={inputHourlyRate} onChange={e=>setInputHourlyRate(e.target.value)} className="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 500" />
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-bold mb-1">Additional Discount (THB)</label>
+          <input type="number" min="0" value={manualDiscount} onChange={e=>setManualDiscount(e.target.value)} className="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. 1000" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1">VAT</label>
+          <select value={vatRate} onChange={e=>setVatRate(Number(e.target.value))} className="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+            <option value={0}>No VAT</option>
+            <option value={7}>VAT 7%</option>
+          </select>
+        </div>
+      </div>
+
+      {creditBalance > 0 && (
+         <div className="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900 text-sm w-full">
+               <input type="checkbox" checked={applyCredit} onChange={e => setApplyCredit(e.target.checked)} className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500 cursor-pointer" />
+               Apply Owed Discount ({creditBalance.toLocaleString()} THB Available)
+            </label>
+         </div>
+      )}
+
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+         <div className="flex justify-between text-sm font-medium text-gray-600"><span>Course Price:</span> <span>{coursePrice.toLocaleString()} THB</span></div>
+         {totalDiscount > 0 && <div className="flex justify-between text-sm text-green-600 font-bold"><span>Total Discount:</span> <span>-{totalDiscount.toLocaleString()} THB</span></div>}
+         {vatRate > 0 && <div className="flex justify-between text-sm text-gray-600 font-medium"><span>Net Price:</span> <span>{netPrice.toLocaleString()} THB</span></div>}
+         {vatRate > 0 && <div className="flex justify-between text-sm text-gray-600 font-medium"><span>VAT (7%):</span> <span>+{vatAmount.toLocaleString()} THB</span></div>}
+         <div className="flex justify-between text-lg font-extrabold pt-2 border-t border-gray-200 text-gray-800"><span>Total Payable:</span> <span>{totalPayable.toLocaleString()} THB</span></div>
+      </div>
+
       <div className="mb-8">
         <label className="block text-sm font-bold mb-1">Remark / Invoice # (Optional)</label>
         <input type="text" value={remark} onChange={e=>setRemark(e.target.value)} className="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Paid via transfer" />
       </div>
-      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 rounded text-sm font-bold">Cancel</button><button type="submit" disabled={calc.totalHours <= 0} className="px-5 py-2.5 bg-indigo-600 disabled:bg-indigo-300 text-white rounded text-sm font-bold shadow-sm">Add Hours</button></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 rounded text-sm font-bold">Cancel</button><button type="submit" disabled={finalHours <= 0} className="px-5 py-2.5 bg-indigo-600 disabled:bg-indigo-300 text-white rounded text-sm font-bold shadow-sm primary-action">Add Hours</button></div>
     </form>
   );
 }
@@ -1623,7 +2479,7 @@ function EditRecordForm({ record, onSubmit, onCancel }) {
         </div>
         <div><label className="block text-xs font-bold mb-1">Remark</label><input type="text" value={remark} onChange={e=>setRemark(e.target.value)} className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" /></div>
       </div>
-      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2 bg-gray-100 rounded font-bold">Cancel</button><button type="submit" className="px-5 py-2 bg-indigo-600 text-white rounded font-bold shadow-sm">Save Changes</button></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-5 py-2 bg-gray-100 rounded font-bold">Cancel</button><button type="submit" className="px-5 py-2 bg-indigo-600 text-white rounded font-bold shadow-sm primary-action">Save Changes</button></div>
     </form>
   );
 }
@@ -1637,243 +2493,1365 @@ function DeleteRecordPrompt({ onSubmit, onCancel }) {
       </h3>
       <p className="text-sm text-gray-600 mb-4">Please provide a reason for deleting this record. It will be kept in the history as a voided item.</p>
       <textarea required value={reason} onChange={e=>setReason(e.target.value)} className="w-full border p-3 rounded-lg mb-6 outline-none focus:ring-2 focus:ring-red-500" rows="3" placeholder="Reason for deletion..."></textarea>
-      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-100 rounded font-bold">Cancel</button><button type="submit" className="px-4 py-2 bg-red-600 text-white rounded font-bold shadow-sm">Confirm Deletion</button></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-100 rounded font-bold">Cancel</button><button type="submit" className="px-4 py-2 bg-red-600 text-white rounded font-bold shadow-sm primary-action">Confirm Deletion</button></div>
+    </form>
+  );
+}
+
+function AddEventForm({ currentUser, teachers, onSubmit, onCancel }) {
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [type, setType] = useState('global');
+  const [teacherId, setTeacherId] = useState(currentUser?.id || '');
+  const [color, setColor] = useState('bg-indigo-500');
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault();
+      onSubmit({
+        id: `evt_${Date.now()}`,
+        title,
+        date,
+        startTime,
+        endTime,
+        type: type === 'teacher' ? 'teacher' : 'global',
+        teacherId: type === 'teacher' ? teacherId : null,
+        color
+      });
+    }} className="p-6">
+      <h3 className="text-xl font-bold mb-4 text-gray-900">Add New Event</h3>
+      <div className="space-y-4 mb-6">
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Event Title</label>
+          <input required value={title} onChange={e=>setTitle(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="e.g. School Holiday" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Date</label>
+          <input type="date" required value={date} onChange={e=>setDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold mb-1 text-gray-700">Start Time (Optional)</label>
+            <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white" />
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-1 text-gray-700">End Time (Optional)</label>
+            <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white" />
+          </div>
+        </div>
+        {currentUser?.role === 'superadmin' && (
+           <div>
+             <label className="block text-sm font-bold mb-1 text-gray-700">Event Type</label>
+             <select value={type} onChange={e=>setType(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
+               <option value="global">School-wide (Global)</option>
+               <option value="teacher">Teacher Specific</option>
+             </select>
+           </div>
+        )}
+        {type === 'teacher' && currentUser?.role === 'superadmin' && (
+           <div>
+             <label className="block text-sm font-bold mb-1 text-gray-700">Assign to Teacher</label>
+             <select value={teacherId} onChange={e=>setTeacherId(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
+               <option value="">Select Teacher...</option>
+               {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+             </select>
+           </div>
+        )}
+        <div>
+           <label className="block text-sm font-bold mb-1 text-gray-700">Event Color</label>
+           <select value={color} onChange={e=>setColor(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
+             <option value="bg-indigo-500">Indigo (Default)</option>
+             <option value="bg-red-500">Red (Urgent/Holiday)</option>
+             <option value="bg-green-500">Green (Success/Active)</option>
+             <option value="bg-blue-500">Blue (Info)</option>
+             <option value="bg-amber-500">Yellow (Warning)</option>
+             <option value="bg-purple-500">Purple (Special)</option>
+           </select>
+        </div>
+      </div>
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200">Cancel</button>
+        <button type="submit" className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 primary-action">Save Event</button>
+      </div>
+    </form>
+  );
+}
+
+// ==========================================
+// STUDENT & PARENT PORTAL MODULES
+// ==========================================
+
+function StatusBadge({ status }) {
+  if (!status) return null;
+  
+  let colorClass = 'bg-gray-100 text-gray-700 border-gray-200';
+  if (status === 'Submitted') colorClass = 'bg-green-100 text-green-700 border-green-200';
+  else if (status === 'Submitted Late') colorClass = 'bg-amber-100 text-amber-700 border-amber-200';
+  else if (status === 'Not Submitted') colorClass = 'bg-red-100 text-red-700 border-red-200';
+
+  return (
+    <span className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold tracking-wider border uppercase shadow-sm flex items-center gap-1.5 w-max ${colorClass}`}>
+      {status === 'Submitted' && <span>✓</span>}
+      {status === 'Submitted Late' && <span>⚠</span>}
+      {status === 'Not Submitted' && <span>✗</span>}
+      {status}
+    </span>
+  );
+}
+
+function ReportSection({ title, children }) {
+  if (!children) return null;
+  return (
+    <div className="mb-6 last:mb-0">
+      <h4 className="text-xs font-extrabold text-[#213568] border-b-2 border-gray-100 pb-2 mb-3 uppercase tracking-widest">
+        {title}
+      </h4>
+      <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const studentService = {
+  getAttendanceRate: (attendance) => {
+    if (!attendance || attendance.length === 0) return 100;
+    const present = attendance.filter(r => r.status === 'present' || r.status === 'makeup').length;
+    const absent = attendance.filter(r => r.status === 'student_absent' || r.status === 'absent').length;
+    const total = present + absent;
+    if (total === 0) return 100;
+    return Math.round((present / total) * 100);
+  },
+  getNextClass: (schedule) => {
+    if (!schedule || schedule.length === 0) return null;
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    let nextClass = null;
+    let minDiff = Infinity;
+
+    schedule.forEach(s => {
+      const classDay = s.dayOfWeek;
+      const [hours, minutes] = s.startTime.split(':').map(Number);
+      const classTime = hours * 60 + minutes;
+
+      let dayDiff = classDay - currentDay;
+      if (dayDiff < 0 || (dayDiff === 0 && classTime <= currentTime)) {
+        dayDiff += 7;
+      }
+
+      const timeDiff = dayDiff * 24 * 60 + (classTime - currentTime);
+      if (timeDiff < minDiff) {
+        minDiff = timeDiff;
+        nextClass = { ...s, dayDiff };
+      }
+    });
+
+    if (nextClass) {
+      const nextDate = new Date(now);
+      nextDate.setDate(now.getDate() + nextClass.dayDiff);
+      return {
+        dateStr: nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        startTime: nextClass.startTime,
+        endTime: nextClass.endTime
+      };
+    }
+    return null;
+  }
+};
+
+function StudentOverviewCard({ student, teacherName, totalHours, usedHours, remainingHours, attendanceRate }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row items-center md:items-start gap-6">
+      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-50 shadow-sm bg-gray-100 flex items-center justify-center shrink-0">
+         {student.profileImage ? <img src={student.profileImage} className="w-full h-full object-cover" alt="Student"/> : <UserCircle size={48} className="text-gray-300"/>}
+      </div>
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+         <div className="space-y-1">
+           <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Student</div>
+           <div className="text-lg font-extrabold text-gray-900">{student.name}</div>
+           <div className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded w-max mt-1">{t('level')} {student.reports?.filter(r=>r.status==='completed').length || 0}</div>
+         </div>
+         <div className="space-y-1">
+           <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Teacher</div>
+           <div className="text-base font-bold text-gray-800">{teacherName}</div>
+         </div>
+         <div className="sm:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 pt-4 border-t border-gray-100">
+           <div>
+             <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t('total_registered')}</div>
+             <div className="text-lg font-bold text-gray-800">{formatTime(totalHours)}</div>
+           </div>
+           <div>
+             <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t('hours_used')}</div>
+             <div className="text-lg font-bold text-indigo-600">{formatTime(usedHours)}</div>
+           </div>
+           <div>
+             <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t('remaining')}</div>
+             <div className={`text-lg font-bold ${remainingHours > 0 ? 'text-green-600' : 'text-red-500'}`}>{formatTime(remainingHours)}</div>
+           </div>
+           <div>
+             <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Attendance Rate</div>
+             <div className="text-lg font-bold text-gray-800">{attendanceRate}%</div>
+           </div>
+         </div>
+      </div>
+    </div>
+  );
+}
+
+function UpcomingClassCard({ nextClass, teacherName, onGoToSchedule }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col h-full">
+      <h3 className="text-sm font-extrabold text-indigo-900 uppercase tracking-widest flex items-center gap-2 mb-4">
+        <Clock size={18} className="text-indigo-500" /> {t('upcoming_class')}
+      </h3>
+      {nextClass ? (
+        <div className="flex-1 flex flex-col justify-center">
+          <div className="text-2xl font-black text-gray-800 mb-1">{nextClass.dateStr}</div>
+          <div className="text-lg font-bold text-indigo-600 mb-3">{nextClass.startTime} – {nextClass.endTime}</div>
+          <div className="text-sm font-medium text-gray-600">Teacher: {teacherName}</div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center text-gray-400 text-sm font-medium">No upcoming classes scheduled.</div>
+      )}
+      <button onClick={onGoToSchedule} className="mt-6 w-full py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-colors text-sm">
+        {t('view_full_schedule')}
+      </button>
+    </div>
+  );
+}
+
+function LessonReportsTable({ reports, showModal }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <h3 className="text-sm font-extrabold text-gray-800 uppercase tracking-widest flex items-center gap-2">
+          <FileText size={18} className="text-blue-500" /> Recent Reports
+        </h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white text-gray-400 uppercase tracking-wider text-[10px]">
+            <tr>
+              <th className="p-4 font-bold">Date</th>
+              <th className="p-4 font-bold">Course</th>
+              <th className="p-4 font-bold hidden sm:table-cell">Lesson Topic</th>
+              <th className="p-4 font-bold text-center">Status</th>
+              <th className="p-4 font-bold text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {reports.slice(0, 5).map(report => (
+              <tr key={report.id} className="hover:bg-gray-50">
+                <td className="p-4 font-medium text-gray-800 whitespace-nowrap">{report.date}</td>
+                <td className="p-4 font-bold text-indigo-700">{report.course}</td>
+                <td className="p-4 text-gray-600 hidden sm:table-cell truncate max-w-[150px]">{report.lessonTopic || '-'}</td>
+                <td className="p-4 text-center">
+                  <StatusBadge status={report.homeworkStatus} />
+                </td>
+                <td className="p-4 text-right">
+                  <button onClick={() => showModal('PARENT_REPORT_PREVIEW', { report })} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded border border-indigo-100 shadow-sm transition-colors">
+                    {t('view_report')}
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {reports.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-400 italic">No lesson reports available yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function HomeworkTracker({ reports }) {
+  const { t } = useTranslation();
+  const homeworks = reports.filter(r => r.homework).slice(0, 5);
+  const submitted = reports.filter(r => r.homeworkStatus === 'Submitted').length;
+  const late = reports.filter(r => r.homeworkStatus === 'Submitted Late').length;
+  const missing = reports.filter(r => r.homeworkStatus === 'Not Submitted').length;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
+      <div className="p-5 border-b border-gray-100 bg-gray-50">
+        <h3 className="text-sm font-extrabold text-gray-800 uppercase tracking-widest flex items-center gap-2">
+          <Edit3 size={18} className="text-orange-500" /> Homework Tracker
+        </h3>
+      </div>
+      <div className="p-5 grid grid-cols-3 gap-2 border-b border-gray-100 bg-white">
+        <div className="text-center p-2 rounded-lg bg-green-50 border border-green-100"><div className="text-lg font-black text-green-700">{submitted}</div><div className="text-[9px] uppercase font-bold text-green-600 tracking-wider">Submitted</div></div>
+        <div className="text-center p-2 rounded-lg bg-amber-50 border border-amber-100"><div className="text-lg font-black text-amber-700">{late}</div><div className="text-[9px] uppercase font-bold text-amber-600 tracking-wider">Late</div></div>
+        <div className="text-center p-2 rounded-lg bg-red-50 border border-red-100"><div className="text-lg font-black text-red-700">{missing}</div><div className="text-[9px] uppercase font-bold text-red-600 tracking-wider">Missing</div></div>
+      </div>
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full text-left text-sm">
+          <tbody className="divide-y divide-gray-100">
+            {homeworks.map(hw => (
+              <tr key={hw.id} className="hover:bg-gray-50">
+                <td className="p-3 font-medium text-gray-600 w-24 align-top pt-4 whitespace-nowrap">{hw.date}</td>
+                <td className="p-3 text-gray-800 font-medium">
+                   <div className="line-clamp-2" title={hw.homework}>{hw.homework}</div>
+                </td>
+                <td className="p-3 text-right align-top pt-3">
+                  <StatusBadge status={hw.homeworkStatus || 'Not Submitted'} />
+                </td>
+              </tr>
+            ))}
+            {homeworks.length === 0 && <tr><td colSpan="3" className="p-8 text-center text-gray-400 italic">No recent homework.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StudentDashboardPage({ student, db, showModal, allCalendarEvents, onNavigate }) {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  if (!student) {
+     return (
+       <div className="w-full max-w-4xl mx-auto p-12 mt-10 text-center text-gray-500 font-bold bg-white rounded-xl shadow-sm border border-gray-200">
+         Loading student dashboard...
+       </div>
+     );
+  }
+  
+  const teacher = (db?.users || []).find(u => u.id === student.teacherId);
+  const teacherName = teacher ? teacher.name : 'Unassigned';
+  const attendance = student.attendance || [];
+  const reports = (db?.lessonReports || []).filter(r => r.studentId === student.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+  
+  const addedPackageHours = attendance.reduce((sum, record) => (record.status === 'added_package' || record.status === 'renewal') ? sum + (Number(record.hours) || 0) : sum, 0);
+  const usedHours = attendance.reduce((sum, record) => (record.status === 'present' || record.status === 'makeup') ? sum + (Number(record.hours) || 0) : sum, 0);
+  const totalHours = (Number(student.registeredHours) || 0) + addedPackageHours;
+  const remainingHours = totalHours - usedHours;
+  const attendanceRate = studentService.getAttendanceRate(attendance);
+  const nextClass = studentService.getNextClass(student.structuredSchedule);
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: <Activity size={18} /> },
+    { id: 'schedule', label: 'Schedule', icon: <Calendar size={18} /> },
+    { id: 'reports', label: 'Lesson Reports', icon: <FileText size={18} /> },
+    { id: 'homework', label: 'Homework', icon: <Edit3 size={18} /> },
+    { id: 'payments', label: 'Payments', icon: <CreditCard size={18} /> },
+    { id: 'attendance_reports', label: 'Attendance & Records', icon: <ClipboardList size={18} /> },
+  ];
+
+  return (
+    <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-6 min-h-[80vh]">
+      
+      {/* Sidebar Navigation */}
+      <div className="w-full md:w-64 shrink-0 flex flex-col gap-2">
+         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+           <nav className="flex flex-col gap-1">
+             {navItems.map(item => (
+               <button 
+                 key={item.id}
+                 onClick={() => setActiveTab(item.id)}
+                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === item.id ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'}`}
+               >
+                 {item.icon} {item.label}
+               </button>
+             ))}
+           </nav>
+         </div>
+
+         {student.certificateStatus === 'approved' && (
+           <div className="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden text-center p-6 bg-gradient-to-b from-white to-yellow-50 mt-4">
+              <Award size={36} className="mx-auto text-yellow-500 mb-2" />
+              <h3 className="text-xs font-bold text-yellow-900 mb-3 uppercase tracking-wider">{t('official_certificate')}</h3>
+              <button onClick={() => onNavigate('certificate_view', student.id)} className="w-full border-2 border-yellow-500 text-yellow-700 bg-white text-xs font-bold py-2 rounded hover:bg-yellow-50 transition-colors">
+                {t('view_diploma')}
+              </button>
+           </div>
+         )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col gap-6">
+         {activeTab === 'dashboard' && (
+           <>
+             <StudentOverviewCard student={student} teacherName={teacherName} totalHours={totalHours} usedHours={usedHours} remainingHours={remainingHours} attendanceRate={attendanceRate} />
+             
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 flex flex-col gap-6">
+                   <UpcomingClassCard nextClass={nextClass} teacherName={teacherName} onGoToSchedule={() => setActiveTab('schedule')} />
+                </div>
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                   <LessonReportsTable reports={reports} showModal={showModal} />
+                   <HomeworkTracker reports={reports} />
+                </div>
+             </div>
+           </>
+         )}
+
+         {activeTab === 'schedule' && (
+           <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-[700px] flex flex-col overflow-hidden">
+              <div className="p-5 border-b border-gray-100 bg-gray-50 shrink-0">
+                <h2 className="text-lg font-bold text-[#213568] flex items-center gap-2"><Calendar size={20}/> My Schedule</h2>
+              </div>
+              <div className="flex-1 p-4 bg-gray-50">
+                <NativeCalendar events={allCalendarEvents.filter(e => 
+                  e.type === 'global' || 
+                  (e.type === 'class' ? e.id.startsWith(`class_${student.id}_`) : 
+                  (e.type === 'attendance' ? e.studentId === student.id : e.teacherId === student.teacherId))
+                )} />
+              </div>
+           </div>
+         )}
+
+         {activeTab === 'reports' && (
+           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[500px]">
+              <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-[#213568] flex items-center gap-2"><FileText size={20}/> All Lesson Reports</h2>
+              </div>
+              <div className="p-0">
+                {reports.length > 0 ? (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-white text-gray-500 border-b border-gray-200 uppercase tracking-wider text-xs">
+                      <tr>
+                        <th className="p-4 font-bold">Date</th>
+                        <th className="p-4 font-bold">Course</th>
+                        <th className="p-4 font-bold">Topic</th>
+                        <th className="p-4 font-bold text-center">Homework</th>
+                        <th className="p-4 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reports.map(report => (
+                        <tr key={report.id} className="hover:bg-indigo-50/30 transition-colors">
+                          <td className="p-4 font-medium text-gray-800">{report.date}</td>
+                          <td className="p-4 font-bold text-indigo-700">{report.course}</td>
+                          <td className="p-4 text-gray-700 font-medium">{report.lessonTopic || '-'}</td>
+                          <td className="p-4 text-center"><StatusBadge status={report.homeworkStatus} /></td>
+                          <td className="p-4 text-right">
+                            <button onClick={() => showModal('PARENT_REPORT_PREVIEW', { report, studentName: student.name, teacherName: teacherName })} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100 shadow-sm transition-colors">View</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="p-12 text-center text-gray-400 italic">No reports available.</div>
+                )}
+              </div>
+           </div>
+         )}
+
+         {activeTab === 'homework' && (
+           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[500px]">
+              <div className="p-5 border-b border-gray-100 bg-gray-50">
+                <h2 className="text-lg font-bold text-[#213568] flex items-center gap-2"><Edit3 size={20}/> Homework Tracker</h2>
+              </div>
+              <div className="p-0">
+                {reports.filter(r => r.homework).length > 0 ? (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-white text-gray-500 border-b border-gray-200 uppercase tracking-wider text-xs">
+                      <tr>
+                        <th className="p-4 font-bold">Assigned</th>
+                        <th className="p-4 font-bold">Homework Details</th>
+                        <th className="p-4 font-bold">Status</th>
+                        <th className="p-4 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reports.filter(r => r.homework).map(report => (
+                        <tr key={report.id} className="hover:bg-gray-50">
+                          <td className="p-4 font-medium text-gray-800 align-top">{report.date}</td>
+                          <td className="p-4 text-gray-700 font-medium align-top whitespace-pre-wrap">{report.homework}</td>
+                          <td className="p-4 align-top"><StatusBadge status={report.homeworkStatus || 'Not Submitted'} /></td>
+                          <td className="p-4 text-right align-top">
+                            <button onClick={() => showModal('PARENT_REPORT_PREVIEW', { report, studentName: student.name, teacherName: teacherName })} className="text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded transition-colors">Details</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="p-12 text-center text-gray-400 italic">No homework assigned yet.</div>
+                )}
+              </div>
+           </div>
+         )}
+
+         {activeTab === 'payments' && (
+           <StudentPayments student={student} onClose={() => setActiveTab('dashboard')} />
+         )}
+
+         {activeTab === 'attendance_reports' && (
+           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 text-center">
+              <div className="bg-indigo-50 p-6 rounded-full mb-6 shadow-inner border border-indigo-100">
+                <ClipboardList size={48} className="text-indigo-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#213568] mb-2">Attendance & Record History</h2>
+              <p className="text-gray-500 mb-8 max-w-md leading-relaxed">Download or print official attendance summaries and detailed course record history for your reference.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                 <button onClick={() => onNavigate('attendance_summary', student.id)} className="px-6 py-3.5 bg-white border-2 border-indigo-100 text-indigo-700 font-bold rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
+                    <Activity size={20} /> {t('attendance_summary')}
+                 </button>
+                 <button onClick={() => onNavigate('advanced_summary', student.id)} className="px-6 py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
+                    <TrendingUp size={20} /> {t('advanced_summary')}
+                 </button>
+              </div>
+           </div>
+         )}
+
+      </div>
+    </div>
+  );
+}
+
+function ParentReportView({ report, studentName, teacherName, onClose }) {
+  const { t } = useTranslation();
+  
+  const sName = studentName || 'Student';
+  const tName = teacherName || 'Teacher';
+
+  return (
+    <div className="p-0 bg-[#f8fafc] flex flex-col h-full">
+      {/* Header Section */}
+      <div className="bg-[#213568] p-8 text-center text-white shrink-0 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
+           <Award size={120} />
+        </div>
+        <h2 className="text-2xl font-extrabold tracking-widest uppercase relative z-10">Oxford School of Language</h2>
+        <p className="text-indigo-200 font-bold mt-2 uppercase tracking-widest text-xs relative z-10">Student Lesson Report</p>
+      </div>
+
+      {/* Content Section */}
+      <div className="p-6 sm:p-8 flex-1 overflow-y-auto">
+        
+        {/* Grid Information */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:border-b border-gray-50 pb-2 sm:pb-0"><span className="w-28 font-bold text-gray-500 uppercase text-[10px] tracking-wider mb-1 sm:mb-0">Student</span> <span className="font-bold text-gray-900">{sName}</span></div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:border-b border-gray-50 pb-2 sm:pb-0"><span className="w-28 font-bold text-gray-500 uppercase text-[10px] tracking-wider mb-1 sm:mb-0">Teacher</span> <span className="font-bold text-gray-900">{tName}</span></div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:border-b border-gray-50 pb-2 sm:pb-0"><span className="w-28 font-bold text-gray-500 uppercase text-[10px] tracking-wider mb-1 sm:mb-0">Course</span> <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md w-max">{report.course || '-'}</span></div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:border-b border-gray-50 pb-2 sm:pb-0"><span className="w-28 font-bold text-gray-500 uppercase text-[10px] tracking-wider mb-1 sm:mb-0">Date</span> <span className="font-bold text-gray-900">{report.date || '-'}</span></div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:col-span-2"><span className="w-28 font-bold text-gray-500 uppercase text-[10px] tracking-wider mb-1 sm:mb-0">Lesson Topic</span> <span className="font-bold text-gray-900 truncate" title={report.lessonTopic}>{report.lessonTopic || '-'}</span></div>
+           </div>
+        </div>
+
+        {/* Sections */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <ReportSection title="Lesson Summary">
+             {report.lessonSummary || '-'}
+          </ReportSection>
+
+          {(report.homework || report.homeworkStatus || report.homeworkRemark) && (
+            <ReportSection title="Homework">
+               {report.homework && <p className="mb-5">{report.homework}</p>}
+               
+               {(report.homeworkAssignedDate || report.homeworkStatus) && (
+                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                   <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Homework Information</h5>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                      {report.homeworkAssignedDate && (
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-500 text-[11px] uppercase tracking-wider mb-1">Assigned Date</span>
+                          <span className="font-bold text-gray-800">{report.homeworkAssignedDate}</span>
+                        </div>
+                      )}
+                      {report.submissionDate && (
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-500 text-[11px] uppercase tracking-wider mb-1">Submission Date</span>
+                          <span className="font-bold text-gray-800">{report.submissionDate}</span>
+                        </div>
+                      )}
+                      {report.homeworkStatus && (
+                        <div className="flex flex-col sm:col-span-2">
+                          <span className="font-bold text-gray-500 text-[11px] uppercase tracking-wider mb-1.5">Status</span>
+                          <StatusBadge status={report.homeworkStatus} />
+                        </div>
+                      )}
+                      {report.homeworkRemark && (
+                        <div className="flex flex-col sm:col-span-2 mt-2 pt-4 border-t border-gray-200">
+                          <span className="font-bold text-gray-500 text-[11px] uppercase tracking-wider mb-1">Remark</span>
+                          <span className="font-medium text-gray-600 italic bg-white p-3 rounded-lg border border-gray-100">{report.homeworkRemark}</span>
+                        </div>
+                      )}
+                   </div>
+                 </div>
+               )}
+            </ReportSection>
+          )}
+
+          {report.comment && (
+            <ReportSection title="Teacher Comment">
+               <span className="italic text-gray-600">"{report.comment}"</span>
+            </ReportSection>
+          )}
+
+          {report.score && (
+            <div className="mt-6 pt-5 border-t-2 border-gray-100 flex items-center justify-between">
+              <span className="text-xs font-extrabold text-[#213568] uppercase tracking-widest">Score / Grade</span>
+              <span className="text-xl font-black text-indigo-700 bg-indigo-50 px-4 py-1.5 rounded-lg border border-indigo-200 shadow-sm">{report.score}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions Footer */}
+        <div className="flex justify-center mt-auto border-t border-gray-200 pt-6">
+           <button type="button" onClick={onClose} className="px-8 py-3 bg-gray-100 text-gray-600 font-bold hover:text-gray-800 hover:bg-gray-200 transition-colors text-sm uppercase tracking-wider rounded-xl shadow-sm">
+              Close Preview
+           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// TEACHER REPORT & HOMEWORK MODULE
+// ==========================================
+
+// COMPONENTS: HomeworkStatusSelector.jsx
+function HomeworkStatusSelector({ status, date, remark, onStatusChange, onDateChange, onRemarkChange }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-4 mb-4">
+      <div>
+        <label className="block text-sm font-bold text-indigo-900 mb-3">{t('homework_status')}</label>
+        <div className="flex flex-wrap gap-5">
+           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
+             <input type="radio" value="Submitted" checked={status === 'Submitted'} onChange={onStatusChange} className="accent-indigo-600 w-4 h-4 cursor-pointer" /> 
+             {t('submitted')}
+           </label>
+           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
+             <input type="radio" value="Submitted Late" checked={status === 'Submitted Late'} onChange={onStatusChange} className="accent-indigo-600 w-4 h-4 cursor-pointer" /> 
+             {t('submitted_late')}
+           </label>
+           <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
+             <input type="radio" value="Not Submitted" checked={status === 'Not Submitted'} onChange={onStatusChange} className="accent-indigo-600 w-4 h-4 cursor-pointer" /> 
+             {t('not_submitted')}
+           </label>
+        </div>
+      </div>
+      {(status === 'Submitted' || status === 'Submitted Late') && (
+          <div>
+             <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">{t('submission_date')}</label>
+             <input type="date" value={date} onChange={onDateChange} className="border border-gray-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm w-full max-w-[200px]" />
+          </div>
+      )}
+      <div>
+        <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wider">{t('remark')}</label>
+        <input type="text" value={remark} onChange={onRemarkChange} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm" placeholder="e.g. Completed during class" />
+      </div>
+    </div>
+  );
+}
+
+// COMPONENTS: TeacherReportForm.jsx
+function LessonReportForm({ student, initialCourse, courses, currentUser, onSubmit, onCancel }) {
+  const { t } = useTranslation();
+  const [course, setCourse] = useState(initialCourse || (courses && courses.length > 0 ? courses[0].name : ''));
+  const [lessonDate, setLessonDate] = useState(new Date().toISOString().split('T')[0]);
+  const [lessonTopic, setLessonTopic] = useState('');
+  const [lessonSummary, setLessonSummary] = useState('');
+  const [homework, setHomework] = useState('');
+  const [hwAssignedDate, setHwAssignedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [comment, setComment] = useState('');
+  const [score, setScore] = useState('');
+  
+  // Homework Status State
+  const [homeworkStatus, setHomeworkStatus] = useState('Not Submitted');
+  const [submissionDate, setSubmissionDate] = useState('');
+  const [homeworkRemark, setHomeworkRemark] = useState('');
+  const [noHomework, setNoHomework] = useState(false);
+
+  const handleStatusChange = (e) => {
+    const val = e.target.value;
+    setHomeworkStatus(val);
+    if ((val === 'Submitted' || val === 'Submitted Late') && !submissionDate) {
+      setSubmissionDate(new Date().toISOString().split('T')[0]);
+    }
+  };
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault();
+      
+      const finalHomework = noHomework ? '' : homework;
+      const finalHwAssignedDate = (!noHomework && finalHomework) ? hwAssignedDate : null;
+      const finalHwStatus = noHomework ? 'No Homework' : (finalHomework ? homeworkStatus : null);
+      
+      const parentReportText = generateParentReportText(
+         student.name, 
+         currentUser.name, 
+         course, 
+         lessonTopic,
+         lessonDate, 
+         lessonSummary, 
+         finalHomework, 
+         finalHwAssignedDate,
+         comment, 
+         score,
+         finalHwStatus,
+         submissionDate,
+         homeworkRemark
+      );
+
+      onSubmit({
+        id: `lr_${Date.now()}`,
+        studentId: student.id,
+        teacherId: currentUser.id,
+        course: course,
+        lessonTopic,
+        date: lessonDate,
+        lessonSummary,
+        homework: finalHomework,
+        homeworkAssignedDate: finalHwAssignedDate,
+        comment,
+        score,
+        homeworkStatus: finalHwStatus,
+        submissionDate: (!noHomework && finalHomework && (homeworkStatus === 'Submitted' || homeworkStatus === 'Submitted Late')) ? submissionDate : null,
+        homeworkRemark: (!noHomework && finalHomework) ? homeworkRemark : '',
+        parentReport: parentReportText
+      });
+    }} className="p-6">
+      <h3 className="text-xl font-bold mb-4 text-gray-900">{t('write_report')}</h3>
+      
+      <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3">
+        <div>
+           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Student Name</span>
+           <span className="text-lg font-extrabold text-indigo-700">{student.name}</span>
+        </div>
+        <div className="border-t border-gray-200 pt-3">
+           <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Teacher</span>
+           <span className="text-base font-bold text-gray-800">{currentUser.name}</span>
+        </div>
+      </div>
+      
+      <div className="space-y-6 mb-8 text-left h-[50vh] overflow-y-auto pr-2">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold mb-1 text-gray-700">Course</label>
+            <select value={course} onChange={e=>setCourse(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium text-gray-800 cursor-pointer">
+               {(courses || []).map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+               {initialCourse && !(courses || []).find(c => c.name === initialCourse) && (
+                  <option value={initialCourse}>{initialCourse}</option>
+               )}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-bold mb-1 text-gray-700">Lesson Date</label>
+            <input required type="date" value={lessonDate} onChange={e=>setLessonDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">{t('lesson_topic')} *</label>
+          <input required type="text" value={lessonTopic} onChange={e=>setLessonTopic(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="e.g. Blending 'fr' sound" />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">{t('lesson_summary')} *</label>
+          <textarea required rows="3" value={lessonSummary} onChange={e=>setLessonSummary(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="What was covered today?"></textarea>
+        </div>
+        
+        <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-3">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+              <Edit3 size={16} className="text-indigo-500"/> {t('homework')}
+            </label>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-600 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50 transition-colors w-max">
+              <input 
+                type="checkbox" 
+                checked={noHomework} 
+                onChange={(e) => {
+                  setNoHomework(e.target.checked);
+                  if (e.target.checked) {
+                     setHomework('');
+                     setHomeworkStatus('No Homework');
+                  } else {
+                     setHomeworkStatus('Not Submitted');
+                  }
+                }} 
+                className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" 
+              />
+              No homework assigned today
+            </label>
+          </div>
+          
+          <textarea 
+            disabled={noHomework} 
+            rows="2" 
+            value={homework} 
+            onChange={e=>setHomework(e.target.value)} 
+            className={`w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors ${noHomework ? 'bg-gray-100 cursor-not-allowed text-gray-400 placeholder-gray-400' : 'bg-white'}`} 
+            placeholder={noHomework ? "Checkbox selected (No homework to log)" : "Detail the assigned homework here..."}
+          ></textarea>
+          
+          {(!noHomework && homework) && (
+            <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-1 text-gray-700">Assigned Date</label>
+                <input required type="date" value={hwAssignedDate} onChange={e=>setHwAssignedDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 bg-white max-w-[200px] shadow-sm" />
+              </div>
+              <HomeworkStatusSelector 
+                status={homeworkStatus} 
+                date={submissionDate} 
+                remark={homeworkRemark}
+                onStatusChange={handleStatusChange}
+                onDateChange={(e) => setSubmissionDate(e.target.value)}
+                onRemarkChange={(e) => setHomeworkRemark(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">{t('teacher_comment')}</label>
+          <textarea rows="2" value={comment} onChange={e=>setComment(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="Observations, behavior, participation..."></textarea>
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">{t('score_optional')}</label>
+          <input type="text" value={score} onChange={e=>setScore(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm max-w-[200px]" placeholder="e.g. 10/10 or A" />
+        </div>
+      </div>
+      
+      <div className="flex justify-end gap-3 pt-5 border-t border-gray-200 mt-2 bg-white sticky bottom-0">
+        <button type="button" onClick={onCancel} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors shadow-sm">Cancel</button>
+        <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-sm primary-action flex items-center gap-2">
+           <Save size={18}/> {t('save_report')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// COMPONENTS: ReportHistory.jsx (StudentLessonReportsList)
+function StudentLessonReportsList({ student, reports, teachers, showModal }) {
+  const { t } = useTranslation();
+  const studentReports = reports.filter(r => r.studentId === student.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <Edit3 className="text-indigo-500" size={24}/> {t('student_lesson_reports')}
+      </h3>
+      {studentReports.length > 0 ? (
+        <div className="space-y-4">
+          {studentReports.map(report => {
+            const teacher = teachers.find(u => u.id === report.teacherId);
+            return (
+              <div key={report.id} className="border border-gray-200 rounded-xl p-5 bg-gray-50 shadow-sm relative flex flex-col">
+                <div className="flex justify-between items-start mb-3 border-b border-gray-200 pb-3">
+                   <div>
+                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider block mb-1">{report.course}</span>
+                     {report.lessonTopic && <span className="font-bold text-gray-800 block text-lg mb-1">{report.lessonTopic}</span>}
+                     <span className="font-medium text-gray-600 flex items-center gap-2 text-sm">
+                       {report.date}
+                     </span>
+                   </div>
+                   <div className="text-right">
+                     <span className="text-xs text-gray-500 block mb-1">Teacher</span>
+                     <span className="font-medium text-gray-700">{teacher ? teacher.name : 'Unknown'}</span>
+                   </div>
+                </div>
+                <div className="space-y-3 text-sm text-gray-700 mb-4">
+                   <div><strong className="block text-xs text-gray-500 uppercase tracking-wider">{t('lesson_summary')}</strong><p className="whitespace-pre-wrap mt-1 text-gray-800">{report.lessonSummary}</p></div>
+                   
+                   {/* Combined Homework Block */}
+                   {(report.homework || report.homeworkStatus || report.homeworkRemark) && (
+                     <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm mt-2">
+                       {report.homework && (
+                         <div className="mb-2">
+                           <strong className="block text-[11px] text-gray-500 uppercase tracking-wider">{t('homework')}</strong>
+                           <p className="whitespace-pre-wrap mt-1 font-medium">{report.homework}</p>
+                           {report.homeworkAssignedDate && <span className="text-[10px] text-gray-400 block mt-1">{t('assigned_date')}: {report.homeworkAssignedDate}</span>}
+                         </div>
+                       )}
+                       
+                       {report.homeworkStatus && (
+                         <div className="flex flex-wrap items-center gap-3 mt-3">
+                           <div className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider px-2 py-1 rounded shadow-sm
+                             ${report.homeworkStatus === 'Submitted' ? 'bg-green-100 text-green-700 border border-green-200' : ''}
+                             ${report.homeworkStatus === 'Submitted Late' ? 'bg-amber-100 text-amber-700 border border-amber-200' : ''}
+                             ${report.homeworkStatus === 'Not Submitted' ? 'bg-red-100 text-red-700 border border-red-200' : ''}
+                           `}>
+                             {report.homeworkStatus === 'Submitted' && <span>✓ {t('submitted')}</span>}
+                             {report.homeworkStatus === 'Submitted Late' && <span>⚠ {t('submitted_late')}</span>}
+                             {report.homeworkStatus === 'Not Submitted' && <span>✗ {t('not_submitted')}</span>}
+                           </div>
+                           
+                           {report.submissionDate && <span className="text-xs text-gray-500 font-medium">On: {report.submissionDate}</span>}
+                         </div>
+                       )}
+                       
+                       {report.homeworkRemark && (
+                         <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100">
+                           <span className="font-bold text-gray-500 uppercase text-[10px] tracking-wider block mb-0.5">{t('remark')}</span>
+                           {report.homeworkRemark}
+                         </div>
+                       )}
+                     </div>
+                   )}
+                   
+                   {report.comment && <div className="mt-3"><strong className="block text-xs text-gray-500 uppercase tracking-wider">{t('teacher_comment')}</strong><p className="whitespace-pre-wrap mt-1 text-gray-800">{report.comment}</p></div>}
+                   {report.score && <div className="mt-2"><strong className="block text-xs text-gray-500 uppercase tracking-wider">{t('score_optional').split(' ')[0]}</strong><p className="font-extrabold text-indigo-600 mt-1 text-base">{report.score}</p></div>}
+                </div>
+                
+                {report.parentReport && (
+                  <div className="mt-auto pt-4 border-t border-gray-200 flex justify-end">
+                     <button type="button" onClick={() => showModal('PARENT_REPORT_PREVIEW', { report })} className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-100 px-4 py-2 rounded-lg hover:bg-indigo-200 transition-colors shadow-sm">
+                       <FileText size={14}/> {t('preview_parent_report')}
+                     </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 italic p-6 bg-gray-50 rounded-xl border border-gray-100">{t('no_lesson_reports')}</div>
+      )}
+    </div>
+  )
+}
+
+// PAGES: TeacherReportsPage.jsx
+function TeacherReportsPage({ currentUser, reports, students, showModal }) {
+  const { t } = useTranslation();
+  const [filterStudent, setFilterStudent] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterCourse, setFilterCourse] = useState('all');
+
+  const myReports = React.useMemo(() => {
+    return reports.filter(r => r.teacherId === currentUser.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [reports, currentUser.id]);
+
+  // Generate dynamic filter options based on existing reports
+  const studentOptions = React.useMemo(() => {
+    const ids = Array.from(new Set(myReports.map(r => r.studentId)));
+    return ids.map(id => students.find(s => s.id === id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  }, [myReports, students]);
+
+  const monthOptions = React.useMemo(() => {
+    return Array.from(new Set(myReports.map(r => r.date.substring(0, 7)))).sort().reverse();
+  }, [myReports]);
+
+  const courseOptions = React.useMemo(() => {
+    return Array.from(new Set(myReports.map(r => r.course))).sort();
+  }, [myReports]);
+
+  const filteredReports = myReports.filter(r => {
+    if (filterStudent !== 'all' && r.studentId !== filterStudent) return false;
+    if (filterMonth !== 'all' && !r.date.startsWith(filterMonth)) return false;
+    if (filterCourse !== 'all' && r.course !== filterCourse) return false;
+    return true;
+  });
+
+  const formatMonth = (yyyyMm) => {
+    if (!yyyyMm) return '';
+    const date = new Date(`${yyyyMm}-01`);
+    if (isNaN(date.getTime())) return yyyyMm;
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+  };
+
+  const handleHomeworkStatusChange = (report, newStatus) => {
+    const { submissionDate } = homeworkStatusUtils.calculateNewStatusFields(newStatus);
+    
+    const student = students.find(s => s.id === report.studentId);
+    const studentName = student ? student.name : 'Unknown';
+
+    const updatedParentReport = generateParentReportText(
+       studentName, 
+       currentUser.name, 
+       report.course, 
+       report.lessonTopic,
+       report.date, 
+       report.lessonSummary, 
+       report.homework, 
+       report.homeworkAssignedDate,
+       report.comment, 
+       report.score,
+       newStatus,
+       submissionDate,
+       report.homeworkRemark
+    );
+
+    updateDoc(getPublicDoc('lesson_reports', report.id), {
+      homeworkStatus: newStatus,
+      submissionDate: submissionDate,
+      parentReport: updatedParentReport
+    }).catch(console.error);
+  };
+
+  return (
+    <div className="w-full max-w-5xl mx-auto mb-12 flex flex-col">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <div>
+            <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><FileText size={24} /> {t('my_reports')}</h2>
+            <p className="text-gray-500 mt-1">Review and manage all lesson reports you have written.</p>
+          </div>
+          <div className="text-2xl font-extrabold text-indigo-600">{filteredReports.length}</div>
+        </div>
+        
+        <div className="p-5 border-b border-gray-100 bg-white flex flex-wrap gap-4">
+           <div className="flex-1 min-w-[200px]">
+             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{t('filter_student')}</label>
+             <select value={filterStudent} onChange={e=>setFilterStudent(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium shadow-sm cursor-pointer">
+               <option value="all">{t('all_students')}</option>
+               {studentOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+             </select>
+           </div>
+           <div className="flex-1 min-w-[150px]">
+             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{t('filter_month')}</label>
+             <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium shadow-sm cursor-pointer">
+               <option value="all">{t('all_months')}</option>
+               {monthOptions.map(m => <option key={m} value={m}>{formatMonth(m)}</option>)}
+             </select>
+           </div>
+           <div className="flex-1 min-w-[150px]">
+             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{t('filter_course')}</label>
+             <select value={filterCourse} onChange={e=>setFilterCourse(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium shadow-sm cursor-pointer">
+               <option value="all">{t('all_courses')}</option>
+               {courseOptions.map(c => <option key={c} value={c}>{c}</option>)}
+             </select>
+           </div>
+        </div>
+
+        <div className="p-0 overflow-x-auto">
+          {filteredReports.length > 0 ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs">
+                  <th className="p-4 font-semibold w-32">Date</th>
+                  <th className="p-4 font-semibold">Student Name</th>
+                  <th className="p-4 font-semibold">Course</th>
+                  <th className="p-4 font-semibold">Lesson Topic</th>
+                  <th className="p-4 font-semibold text-center">Homework</th>
+                  <th className="p-4 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredReports.map(report => {
+                  const student = students.find(s => s.id === report.studentId);
+                  const studentFirstName = (student?.name || 'Unknown').split(' ')[0] || 'Unknown';
+                  return (
+                    <tr key={report.id} className="hover:bg-indigo-50/30 transition-colors bg-white group">
+                      <td className="p-4 font-medium text-gray-700 whitespace-nowrap">{report.date}</td>
+                      <td className="p-4 font-bold text-gray-900">{studentFirstName}</td>
+                      <td className="p-4 text-indigo-700 font-semibold text-xs tracking-wider">{report.course}</td>
+                      <td className="p-4 text-gray-800 font-medium truncate max-w-[250px]" title={report.lessonTopic}>{report.lessonTopic || '-'}</td>
+                      <td className="p-4 text-center">
+                        {report.homework ? (
+                          <select
+                            value={report.homeworkStatus || 'Not Submitted'}
+                            onChange={(e) => handleHomeworkStatusChange(report, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`text-xs font-bold border border-transparent outline-none cursor-pointer rounded px-2 py-1 hover:border-gray-300 shadow-sm transition-colors
+                              ${report.homeworkStatus === 'Submitted' ? 'text-green-700 bg-green-100' : 
+                                report.homeworkStatus === 'Submitted Late' ? 'text-amber-700 bg-amber-100' : 
+                                'text-red-700 bg-red-100'}`}
+                            title={homeworkStatusUtils.getTooltip(report, t)}
+                          >
+                            <option value="Not Submitted">✗ {t('not_submitted')}</option>
+                            <option value="Submitted">✓ {t('submitted')}</option>
+                            <option value="Submitted Late">⚠ {t('submitted_late')}</option>
+                          </select>
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <button onClick={() => showModal('PARENT_REPORT_PREVIEW', { report })} className="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shadow-sm border border-indigo-100">
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-12 text-center text-gray-500 bg-white italic border-t border-gray-100">
+              No reports match the selected filters.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// CORE APP LOGIC
+// ==========================================
+
+function UserSettingsForm({ user, onSubmit, onCancel }) {
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [password, setPassword] = useState(user?.password || '');
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault();
+      onSubmit({ name, email, password });
+    }} className="p-6">
+      <h3 className="text-xl font-bold mb-6 text-gray-900">User Settings: <span className="text-indigo-600">{user?.username}</span></h3>
+      <div className="space-y-4 mb-8">
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Full Name</label>
+          <input required value={name} onChange={e=>setName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Email Address</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="user@example.com" />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-1 text-gray-700">Password</label>
+          <input required value={password} onChange={e=>setPassword(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3">
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors rounded-lg font-bold">Close</button>
+        <button type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white rounded-lg font-bold primary-action">Save Settings</button>
+      </div>
     </form>
   );
 }
 
 function ModalManager({ modalState, closeModal }) {
-  if (!modalState.isOpen) return null;
+  if (!modalState || !modalState.isOpen || !modalState.type) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden max-h-[90vh] overflow-y-auto">
-        {modalState.type === 'ALERT' && (
-          <div className="p-6 text-center">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{modalState.data.title}</h3>
-            <p className="text-gray-600 mb-6">{modalState.data.message}</p>
-            <button onClick={closeModal} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors">OK</button>
-          </div>
-        )}
-        {modalState.type === 'CONFIRM' && (
-          <div className="p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{modalState.data.title}</h3>
-            <p className="text-gray-600 mb-6 leading-relaxed">{modalState.data.message}</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={closeModal} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors">Cancel</button>
-              <button onClick={() => { modalState.data.onConfirm(); closeModal(); }} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors">Confirm</button>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden max-h-[90vh] flex flex-col ${modalState.type === 'PARENT_REPORT_PREVIEW' ? 'max-w-2xl bg-[#f8fafc]' : 'max-w-md'}`}>
+        <div className="overflow-y-auto w-full h-full">
+          {modalState.type === 'ALERT' && (
+            <div className="p-6 text-center">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{modalState.data.title}</h3>
+              <p className="text-gray-600 mb-6">{modalState.data.message}</p>
+              <button type="button" onClick={closeModal} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors primary-action">OK</button>
             </div>
-          </div>
-        )}
-        {modalState.type === 'ADD_STUDENT' && (
-          <AddStudentForm onSubmit={(name) => { modalState.data.onSubmit(name); closeModal(); }} onCancel={closeModal} />
-        )}
-        {modalState.type === 'ADD_USER' && (
-          <AddUserForm onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
-        )}
-        {modalState.type === 'ADD_PACKAGE' && (
-          <AddPackageForm schedule={modalState.data.schedule} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
-        )}
-        {modalState.type === 'EDIT_RECORD' && (
-          <EditRecordForm record={modalState.data.record} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
-        )}
-        {modalState.type === 'DELETE_RECORD' && (
-          <DeleteRecordPrompt onSubmit={(reason) => { modalState.data.onSubmit(reason); closeModal(); }} onCancel={closeModal} />
-        )}
+          )}
+          {modalState.type === 'CONFIRM' && (
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{modalState.data.title}</h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">{modalState.data.message}</p>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={closeModal} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors">Cancel</button>
+                <button type="button" onClick={() => { modalState.data.onConfirm(); closeModal(); }} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors primary-action">Confirm</button>
+              </div>
+            </div>
+          )}
+          {modalState.type === 'ADD_STUDENT' && (
+            <AddStudentForm onSubmit={(name) => { modalState.data.onSubmit(name); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'ADD_USER' && (
+            <AddUserForm onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'CREATE_STUDENT_ACCOUNT' && (
+            <CreateStudentAccountForm student={modalState.data.student} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'CREATE_CERTIFICATE' && (
+            <CreateCertificateForm students={modalState.data.students} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'ADD_PACKAGE' && (
+            <AddPackageForm schedule={modalState.data.schedule} creditBalance={modalState.data.creditBalance} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'EDIT_RECORD' && (
+            <EditRecordForm record={modalState.data.record} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'DELETE_RECORD' && (
+            <DeleteRecordPrompt onSubmit={(reason) => { modalState.data.onSubmit(reason); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'EVENT_MODAL' && (
+            <AddEventForm currentUser={modalState.data.currentUser} teachers={modalState.data.teachers} onSubmit={(eventData) => { modalState.data.onSave(eventData); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'USER_SETTINGS' && (
+            <UserSettingsForm user={modalState.data.user} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'LESSON_REPORT_MODAL' && (
+            <LessonReportForm student={modalState.data.student} initialCourse={modalState.data.course} courses={modalState.data.courses} currentUser={modalState.data.currentUser} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+          )}
+          {modalState.type === 'PARENT_REPORT_PREVIEW' && (
+            <ParentReportView report={modalState.data.report} studentName={modalState.data.studentName} teacherName={modalState.data.teacherName} onClose={closeModal} />
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function CertificateView() {
-  return (
-    <div className="p-8 text-center text-gray-500 bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-4xl mx-auto mt-8">
-      Certificate viewing is temporarily disabled.
-    </div>
-  );
-}
+function CertificateView({ student, template, settings, onUploadTemplate, onUpdateSettings, canEdit }) {
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-function AdvancedCourseSummaryReport({ student, onClose }) {
-  const [selectedPackageId, setSelectedPackageId] = useState('');
-  
-  // Extract packages from attendance history
-  const packages = (student?.attendance || []).filter(r => r.status === 'added_package' || r.status === 'renewal');
-  
-  useEffect(() => {
-    if (!selectedPackageId && packages.length > 0) {
-      setSelectedPackageId(packages[0].id);
+  const mergedSettings = {
+    name: settings?.name || { x: 380, y: 360, size: 54, color: '#b91c1c', font: 'serif' },
+    date: settings?.date || { x: 190, y: 647, size: 19, color: '#213568', font: 'serif' },
+    code: settings?.code || { x: 420, y: 730, size: 10, color: '#213568', font: 'sans-serif' }
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    const originalScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    try {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+      const container = document.getElementById('certificate-container');
+      const noPdfElements = Array.from(container.querySelectorAll('.no-pdf'));
+      noPdfElements.forEach(el => el.classList.add('hidden'));
+
+      const canvas = await window.html2canvas(container, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: null
+      });
+      
+      noPdfElements.forEach(el => el.classList.remove('hidden'));
+
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      
+      const { jsPDF } = window.jspdf;
+      const orientation = canvas.width > canvas.height ? 'l' : 'p';
+      const pdf = new jsPDF(orientation, 'px', [canvas.width / 2, canvas.height / 2]);
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`Certificate_${student?.name?.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate PDF. Check console for details.");
+    } finally {
+      window.scrollTo(0, originalScrollY);
+      setIsGenerating(false);
     }
-  }, [packages, selectedPackageId]);
-
-  const activePackage = packages.find(p => p.id === selectedPackageId) || packages[0];
-  const startDateStr = activePackage?.packageStartDate || activePackage?.startDate || activePackage?.date;
-  const endDateStr = activePackage?.packageEndDate || activePackage?.endDate;
-  const schedule = student?.structuredSchedule || [];
-
-  // Formatting helpers
-  const formatDisplayDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const day = String(date.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${day} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
-  const formatScheduleLine = (schedArr) => {
-    if (!schedArr || schedArr.length === 0) return 'No schedule set';
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const sorted = [...schedArr].sort((a,b) => (a.dayOfWeek === 0 ? 7 : a.dayOfWeek) - (b.dayOfWeek === 0 ? 7 : b.dayOfWeek));
-    return sorted.map(s => `${dayNames[s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ');
+  const handlePropertyChange = (key, prop, value) => {
+    const current = mergedSettings[key];
+    onUpdateSettings(key, { ...current, [prop]: value });
   };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // Generate sessions based on date range and class schedule
-  const sessions = React.useMemo(() => {
-     if (!startDateStr || !endDateStr || schedule.length === 0) return [];
-     const start = new Date(startDateStr);
-     const end = new Date(endDateStr);
-     const result = [];
-     
-     // Prevent invalid date loops
-     if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
-
-     const scheduleMap = new Map(schedule.map(s => [s.dayOfWeek, s]));
-     
-     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dayOfWeek = d.getDay();
-        if (scheduleMap.has(dayOfWeek)) {
-           const sched = scheduleMap.get(dayOfWeek);
-           result.push({
-             dateObj: new Date(d),
-             dateStr: d.toISOString().split('T')[0],
-             dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
-             startTime: sched.startTime,
-             endTime: sched.endTime
-           });
-        }
-     }
-     return result;
-  }, [startDateStr, endDateStr, schedule]);
-
-  // Overlay attendance records to determine actual status
-  const attendanceMap = new Map();
-  (student?.attendance || []).forEach(record => {
-    if (record.status !== 'deleted' && record.status !== 'added_package' && record.status !== 'renewal') {
-       if (!attendanceMap.has(record.date)) {
-           attendanceMap.set(record.date, record);
-       }
-    }
-  });
-
-  const tableData = sessions.map(session => {
-     const att = attendanceMap.get(session.dateStr);
-     let status = 'Scheduled';
-     
-     if (att) {
-        if (att.status === 'present') status = 'Present';
-        else if (att.status === 'teacher_absent') status = 'Teacher Absent';
-        else if (att.status === 'student_absent' || att.status === 'absent') status = 'Student Absent';
-        else if (att.status === 'makeup') status = 'Make-up';
-     } else {
-        // Check if date has already passed
-        if (session.dateObj < new Date(new Date().setHours(0,0,0,0))) {
-            status = 'Pending / Missed';
-        }
-     }
-
-     return { ...session, status };
-  });
 
   return (
-    <div className="w-full max-w-4xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 print:shadow-none print:border-none mb-12">
-      <div className="p-8 print:p-0">
-        {/* Action Bar (Hidden in Print) */}
-        <div className="print:hidden mb-8 flex justify-between items-center border-b border-gray-100 pb-4">
-           <div>
-              <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><ClipboardList size={24} /> Advanced Course Summary</h2>
-              <p className="text-gray-500 mt-1">Auto-generated schedule matched with attendance.</p>
-           </div>
-           <div className="flex gap-3">
-              <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
-                <ArrowLeft size={18} /> Back
-              </button>
-              <button onClick={handlePrint} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center gap-2">
-                <FileText size={18} /> Print Report
-              </button>
-           </div>
+    <div className="w-full max-w-5xl mx-auto mb-12 flex flex-col items-center">
+      <div className="w-full flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div>
+          <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><Award size={24} /> Official Certificate</h2>
+          <p className="text-gray-500 mt-1">Status: <span className={`font-bold uppercase ${student?.certificateStatus === 'approved' ? 'text-green-600' : 'text-amber-600'}`}>{student?.certificateStatus}</span></p>
         </div>
+        <div className="flex gap-3">
+          {canEdit && template && (
+            <button onClick={() => setIsEditMode(!isEditMode)} className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-sm ${isEditMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              <Settings size={18} /> {isEditMode ? 'Finish Editing' : 'Edit Layout'}
+            </button>
+          )}
+          {template && student?.certificateStatus === 'approved' && (
+            <button onClick={handleDownloadPDF} disabled={isGenerating || isEditMode} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-5 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-colors">
+              {isGenerating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <FileText size={18} />}
+              {isGenerating ? 'Generating PDF...' : 'Download PDF'}
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Package Selector (Hidden in Print) */}
-        {packages.length > 1 && (
-           <div className="mb-6 print:hidden bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center gap-3">
-              <label className="text-sm font-bold text-gray-700">Select Package Period:</label>
-              <select value={selectedPackageId} onChange={e => setSelectedPackageId(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-50 bg-white font-medium">
-                 {packages.map(p => (
-                    <option key={p.id} value={p.id}>
-                       {formatDisplayDate(p.packageStartDate || p.startDate || p.date)} - {formatDisplayDate(p.packageEndDate || p.endDate)} ({p.hours} Hrs)
-                    </option>
-                 ))}
-              </select>
-           </div>
-        )}
-
-        {/* Printable A4 Section */}
-        <div className="print:block bg-white print:w-full">
-           <div className="text-center border-b-2 border-[#213568] pb-6 mb-8">
-              <h1 className="text-3xl font-extrabold uppercase tracking-widest text-[#213568]">Oxford School of Language</h1>
-              <h2 className="text-xl font-bold text-gray-600 uppercase tracking-widest mt-2">Course Attendance Summary</h2>
-           </div>
-
-           <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 text-[15px]">
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Student Name</span> <span className="font-bold text-gray-900">{student?.name}</span></div>
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Total Sessions</span> <span className="font-bold text-gray-900">{sessions.length} Classes</span></div>
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Course Period</span> <span className="font-bold text-gray-900">{formatDisplayDate(startDateStr)} – {formatDisplayDate(endDateStr)}</span></div>
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Class Schedule</span> <span className="font-bold text-gray-900">{formatScheduleLine(schedule)}</span></div>
-           </div>
-
-           {sessions.length > 0 ? (
-             <table className="w-full text-[13px] sm:text-sm border-collapse">
-                <thead>
-                   <tr className="bg-gray-100 text-gray-600 print:bg-gray-200">
-                      <th className="border border-gray-300 p-3 text-left font-bold uppercase tracking-wider">Date</th>
-                      <th className="border border-gray-300 p-3 text-left font-bold uppercase tracking-wider">Day</th>
-                      <th className="border border-gray-300 p-3 text-center font-bold uppercase tracking-wider min-w-[120px] whitespace-nowrap">Time</th>
-                      <th className="border border-gray-300 p-3 text-center font-bold uppercase tracking-wider">Status</th>
-                   </tr>
-                </thead>
-                <tbody>
-                   {tableData.map((row, i) => {
-                      let statusColor = 'text-gray-900';
-                      if (row.status === 'Present') statusColor = 'text-green-700';
-                      if (row.status === 'Teacher Absent') statusColor = 'text-amber-600';
-                      if (row.status === 'Student Absent') statusColor = 'text-red-600';
-                      if (row.status === 'Make-up') statusColor = 'text-blue-600';
-                      if (row.status === 'Pending / Missed') statusColor = 'text-gray-400 italic';
-
-                      return (
-                        <tr key={i} className="hover:bg-gray-50 print:hover:bg-transparent">
-                           <td className="border border-gray-300 p-3 font-medium text-gray-800">{formatDisplayDate(row.dateStr)}</td>
-                           <td className="border border-gray-300 p-3 text-gray-700">{row.dayName}</td>
-                           <td className="border border-gray-300 p-3 text-center text-gray-700 min-w-[120px] whitespace-nowrap">{row.startTime} – {row.endTime}</td>
-                           <td className={`border border-gray-300 p-3 text-center font-bold ${statusColor}`}>
-                              {row.status}
-                           </td>
-                        </tr>
-                      );
-                   })}
-                </tbody>
-             </table>
-           ) : (
-             <div className="p-12 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                <p className="text-gray-500 font-medium">No valid package dates or schedule found. Ensure the student has an active package and a weekly schedule set.</p>
+      {!template ? (
+        <div className="w-full bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12 text-center flex flex-col items-center">
+           <ImageIcon size={48} className="text-gray-300 mb-4" />
+           <h3 className="text-lg font-bold text-gray-800 mb-2">No Certificate Template Uploaded</h3>
+           <p className="text-gray-500 mb-6 max-w-md">The Super Admin needs to upload a base certificate image (PNG/JPG) before certificates can be generated.</p>
+           {canEdit && (
+             <div className="relative">
+                <input type="file" accept="image/*" onChange={onUploadTemplate} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <button className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-colors">Upload Template Image</button>
              </div>
            )}
         </div>
-      </div>
+      ) : (
+        <div className="w-full relative flex justify-center bg-gray-50 p-8 rounded-2xl border border-gray-200 overflow-x-auto shadow-inner">
+           
+           {isEditMode && (
+             <div className="absolute top-4 left-4 z-50 bg-white/95 backdrop-blur shadow-xl rounded-xl p-4 border border-indigo-100 w-64 no-pdf print:hidden">
+               <h4 className="font-bold text-indigo-900 mb-3 border-b pb-2 text-sm">Layout Controls</h4>
+               <p className="text-[11px] text-gray-500 mb-4">Drag the text fields directly on the certificate to position them. Use controls below to style.</p>
+               
+               <div className="space-y-3">
+                 {['name', 'date', 'code'].map(key => (
+                   <div key={key} className="flex flex-col gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                     <div className="flex justify-between items-center">
+                       <span className="text-xs font-extrabold text-gray-700 capitalize">{key}</span>
+                       <div className="flex items-center gap-2">
+                         <button onClick={() => handlePropertyChange(key, 'size', Math.max(10, mergedSettings[key].size - 2))} className="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-100 font-bold text-gray-600 shadow-sm">-</button>
+                         <span className="text-xs w-6 text-center font-bold">{mergedSettings[key].size}</span>
+                         <button onClick={() => handlePropertyChange(key, 'size', mergedSettings[key].size + 2)} className="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-100 font-bold text-gray-600 shadow-sm">+</button>
+                       </div>
+                     </div>
+                     <div className="flex gap-2 items-center">
+                       <input type="color" value={mergedSettings[key].color || '#000000'} onChange={(e) => handlePropertyChange(key, 'color', e.target.value)} className="w-8 h-8 p-0 border-0 rounded cursor-pointer shrink-0 bg-transparent" title="Change Color" />
+                       <select value={mergedSettings[key].font || 'serif'} onChange={(e) => handlePropertyChange(key, 'font', e.target.value)} className="text-xs border border-gray-300 rounded-md p-1.5 flex-1 font-medium bg-white outline-none focus:ring-1 focus:ring-indigo-500">
+                         <option value="serif">Serif (Classic)</option>
+                         <option value="sans-serif">Sans-Serif (Modern)</option>
+                         <option value="monospace">Monospace</option>
+                         <option value="'Brush Script MT', cursive">Cursive (Elegant)</option>
+                       </select>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+               
+               <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
+                 <button onClick={() => {
+                    onUpdateSettings('name', defaultCertSettings.name);
+                    onUpdateSettings('date', defaultCertSettings.date);
+                    onUpdateSettings('code', defaultCertSettings.code);
+                 }} className="w-full bg-amber-50 text-amber-700 py-2 rounded text-xs font-bold hover:bg-amber-100 border border-amber-200 transition-colors">
+                    Reset Default Layout
+                 </button>
+                 <div className="relative overflow-hidden inline-block w-full">
+                   <input type="file" accept="image/*" onChange={onUploadTemplate} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                   <button className="w-full bg-gray-100 text-gray-700 py-2 rounded text-xs font-bold hover:bg-gray-200 border border-gray-300 transition-colors">Replace Template Image</button>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           <div id="certificate-container" className="relative shadow-2xl bg-white print:shadow-none mx-auto" style={{ width: '1000px', minWidth: '1000px' }}>
+              <img src={template} alt="Certificate Template" className="w-full h-auto block pointer-events-none" />
+              
+              <DraggableElement 
+                isEditMode={isEditMode} label="Student Name"
+                position={{ x: mergedSettings.name.x, y: mergedSettings.name.y }} size={mergedSettings.name.size}
+                color={mergedSettings.name.color || '#b91c1c'}
+                fontFamily={mergedSettings.name.font || 'serif'}
+                text={student?.name || 'Student Name'}
+                onUpdate={(newPos) => onUpdateSettings('name', { ...mergedSettings.name, ...newPos })}
+              />
+              
+              <DraggableElement 
+                isEditMode={isEditMode} label="Approval Date"
+                position={{ x: mergedSettings.date.x, y: mergedSettings.date.y }} size={mergedSettings.date.size}
+                color={mergedSettings.date.color || '#213568'}
+                fontFamily={mergedSettings.date.font || 'serif'}
+                text={student?.certificateDate || new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}
+                onUpdate={(newPos) => onUpdateSettings('date', { ...mergedSettings.date, ...newPos })}
+              />
+              
+              <DraggableElement 
+                isEditMode={isEditMode} label="Certificate Code"
+                position={{ x: mergedSettings.code.x, y: mergedSettings.code.y }} size={mergedSettings.code.size}
+                color={mergedSettings.code.color || '#213568'}
+                fontFamily={mergedSettings.code.font || 'sans-serif'}
+                text={student?.certificateCode ? `CERTIFICATION CODE: ${student.certificateCode}` : `CERTIFICATION CODE: OXSL-CM-PHO-${new Date().getFullYear()}-001`}
+                onUpdate={(newPos) => onUpdateSettings('code', { ...mergedSettings.code, ...newPos })}
+              />
+           </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1935,7 +3913,6 @@ function AttendanceSummaryReport({ student, onClose }) {
     window.print();
   };
 
-  // Generate combined dynamic report data
   const reportData = React.useMemo(() => {
     const records = student?.attendance || [];
     const rawRecords = records.filter(r => {
@@ -1948,7 +3925,6 @@ function AttendanceSummaryReport({ student, onClose }) {
     const scheduleMap = new Map((student?.structuredSchedule || []).map(s => [s.dayOfWeek, s]));
     const mergedMap = new Map();
 
-    // 1. Project scheduled dates
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -1972,11 +3948,9 @@ function AttendanceSummaryReport({ student, onClose }) {
       }
     }
 
-    // 2. Overlay actual attendance records
     rawRecords.forEach(r => {
       const existing = mergedMap.get(r.date);
       const timeStr = existing ? existing.time : (getScheduledTime(r.date) !== '-' ? getScheduledTime(r.date) : 'Ad-hoc / Extra');
-      
       mergedMap.set(r.date, {
         id: r.id,
         dateStr: r.date,
@@ -1990,7 +3964,6 @@ function AttendanceSummaryReport({ student, onClose }) {
 
     const finalList = Array.from(mergedMap.values()).sort((a, b) => new Date(a.dateStr) - new Date(b.dateStr));
 
-    // 3. Calculate accurate statistics
     let presentCount = 0;
     let studentAbsentCount = 0;
     let teacherAbsentCount = 0;
@@ -2033,6 +4006,24 @@ function AttendanceSummaryReport({ student, onClose }) {
     return row.record.remark || '-';
   };
 
+  const getChunks = (list, firstLimit, otherLimit) => {
+    const chunks = [];
+    let current = [];
+    list.forEach((item) => {
+      const limit = chunks.length === 0 ? firstLimit : otherLimit;
+      if (current.length >= limit) {
+        chunks.push(current);
+        current = [];
+      }
+      current.push(item);
+    });
+    if (current.length > 0) chunks.push(current);
+    if (chunks.length === 0) chunks.push([]);
+    return chunks;
+  };
+
+  const chunks = getChunks(reportData.finalList, 15, 25);
+
   const handleExportPDF = async () => {
     setIsGenerating(true);
     const originalScrollY = window.scrollY;
@@ -2045,30 +4036,47 @@ function AttendanceSummaryReport({ student, onClose }) {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      const container = document.getElementById('attendance-report-container');
+      const pages = document.querySelectorAll('#attendance-report-container .pdf-page');
       
-      const noPdfElements = Array.from(container.querySelectorAll('.no-pdf'));
-      noPdfElements.forEach(el => el.classList.add('hidden'));
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        
+        const pageEl = pages[i];
+        
+        // Force fixed A4 aspect ratio so elements never bleed off the PDF page
+        const originalWidth = pageEl.style.width;
+        const originalMinHeight = pageEl.style.minHeight;
+        const originalPadding = pageEl.style.padding;
+        
+        pageEl.style.width = '1024px';
+        pageEl.style.minHeight = '1448px'; 
+        pageEl.style.padding = '40px'; 
+        
+        const noPdfElements = Array.from(pageEl.querySelectorAll('.no-pdf'));
+        noPdfElements.forEach(el => el.classList.add('hidden'));
 
-      const canvas = await window.html2canvas(container, { 
-        scale: 2, 
-        useCORS: true, 
-        backgroundColor: '#ffffff',
-        scrollY: 0
-      });
+        const canvas = await window.html2canvas(pageEl, { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#ffffff',
+          scrollY: 0,
+          windowWidth: 1024 
+        });
+        
+        pageEl.style.width = originalWidth;
+        pageEl.style.minHeight = originalMinHeight;
+        pageEl.style.padding = originalPadding;
+        noPdfElements.forEach(el => el.classList.remove('hidden'));
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
       
-      noPdfElements.forEach(el => el.classList.remove('hidden'));
-
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Attendance_Summary_${student?.name?.replace(/[^a-z0-9]/gi, '_') || 'Report'}.pdf`);
     } catch (err) {
       console.error(err);
-      alert("Failed to generate PDF. Check console for details.");
     } finally {
       window.scrollTo(0, originalScrollY);
       setIsGenerating(false);
@@ -2077,9 +4085,21 @@ function AttendanceSummaryReport({ student, onClose }) {
 
   return (
     <div className="w-full max-w-4xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 print:shadow-none print:border-none mb-12">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #attendance-report-container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
+          .print-page { page-break-after: always; width: 100% !important; max-width: none !important; }
+          .print-page:last-child { page-break-after: auto; }
+          table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; page-break-inside: auto; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          th, td { border: 1px solid #d1d5db !important; word-wrap: break-word !important; }
+          .no-pdf, .print\\:hidden { display: none !important; }
+        }
+      `}} />
       <div className="p-8 print:p-0">
-        
-        {/* Action Bar (Hidden in Print/PDF) */}
         <div className="print:hidden no-pdf mb-8 flex justify-between items-center border-b border-gray-100 pb-4">
            <div>
               <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><Activity size={24} /> Attendance Summary</h2>
@@ -2091,8 +4111,6 @@ function AttendanceSummaryReport({ student, onClose }) {
               </button>
            </div>
         </div>
-
-        {/* Date Filters (Hidden in Print/PDF) */}
         <div className="mb-8 print:hidden no-pdf bg-gray-50 p-5 rounded-xl border border-gray-200 flex flex-wrap items-end gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Start Date</label>
@@ -2112,93 +4130,412 @@ function AttendanceSummaryReport({ student, onClose }) {
                 </button>
             </div>
         </div>
-
-        {/* Printable Report Container */}
         <div id="attendance-report-container" className="bg-white print:w-full">
-           <div className="text-center border-b-2 border-[#213568] pb-6 mb-8">
-              <h1 className="text-3xl font-extrabold uppercase tracking-widest text-[#213568]">Oxford School of Language</h1>
-              <h2 className="text-xl font-bold text-gray-600 uppercase tracking-widest mt-2">Attendance Summary Report</h2>
-           </div>
+           {chunks.map((chunk, pageIndex) => (
+             <div key={pageIndex} className="pdf-page print-page w-full bg-white pb-6">
+                {pageIndex === 0 && (
+                  <>
+                    <div className="text-center border-b-2 border-[#213568] pb-6 mb-8">
+                        <h1 className="text-3xl font-extrabold uppercase tracking-widest text-[#213568]">Oxford School of Language</h1>
+                        <h2 className="text-xl font-bold text-gray-600 uppercase tracking-widest mt-2">Attendance Summary Report</h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-10 text-[15px]">
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Student Name</span> <span className="font-bold text-gray-900">{student?.name}</span></div>
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Date Range</span> <span className="font-bold text-gray-900">{formatDisplayDate(startDate)} – {formatDisplayDate(endDate)}</span></div>
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Report Generated</span> <span className="font-bold text-gray-900">{formatDisplayDate(new Date().toISOString())}</span></div>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Statistics Summary</h3>
+                    <div className="overflow-hidden rounded-xl border border-gray-300 mb-10">
+                      <table className="w-full text-sm text-left">
+                          <tbody className="divide-y divide-gray-200">
+                            <tr className="bg-gray-50">
+                                <td className="p-4 font-bold text-gray-700 w-1/2">Total Scheduled Classes</td>
+                                <td className="p-4 font-extrabold text-indigo-700">{reportData.totalScheduled}</td>
+                            </tr>
+                            <tr className="bg-white">
+                                <td className="p-4 font-bold text-gray-700">Present Count</td>
+                                <td className="p-4 font-extrabold text-green-600">{reportData.presentCount}</td>
+                            </tr>
+                            <tr className="bg-gray-50">
+                                <td className="p-4 font-bold text-gray-700">Student Absent Count</td>
+                                <td className="p-4 font-extrabold text-red-500">{reportData.studentAbsentCount}</td>
+                            </tr>
+                            <tr className="bg-white">
+                                <td className="p-4 font-bold text-gray-700">Teacher Absent Count</td>
+                                <td className="p-4 font-extrabold text-amber-600">{reportData.teacherAbsentCount}</td>
+                            </tr>
+                            <tr className="bg-gray-50">
+                                <td className="p-4 font-bold text-gray-700">Make-up Classes Needed</td>
+                                <td className="p-4 font-extrabold text-orange-600">{reportData.makeupNeeded}</td>
+                            </tr>
+                            <tr className="bg-white">
+                                <td className="p-4 font-bold text-gray-700">Make-up Completed</td>
+                                <td className="p-4 font-extrabold text-blue-600">{reportData.makeupCompletedCount}</td>
+                            </tr>
+                            <tr className="bg-indigo-50 border-t-2 border-indigo-200">
+                                <td className="p-4 font-extrabold text-[#213568] uppercase tracking-wider text-xs">Overall Attendance Rate</td>
+                                <td className="p-4 font-extrabold text-indigo-700 text-lg">{reportData.attendanceRate}%</td>
+                            </tr>
+                          </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
 
-           <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-10 text-[15px]">
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Student Name</span> <span className="font-bold text-gray-900">{student?.name}</span></div>
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Date Range</span> <span className="font-bold text-gray-900">{formatDisplayDate(startDate)} – {formatDisplayDate(endDate)}</span></div>
-              <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Report Generated</span> <span className="font-bold text-gray-900">{formatDisplayDate(new Date().toISOString())}</span></div>
-           </div>
+                {pageIndex > 0 && (
+                  <div className="hidden print:block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2">
+                    Attendance Summary Continued - {student?.name}
+                  </div>
+                )}
 
-           <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Statistics Summary</h3>
-           <div className="overflow-hidden rounded-xl border border-gray-300 mb-10">
-             <table className="w-full text-sm text-left">
-                <tbody className="divide-y divide-gray-200">
-                   <tr className="bg-gray-50">
-                      <td className="p-4 font-bold text-gray-700 w-1/2">Total Scheduled Classes</td>
-                      <td className="p-4 font-extrabold text-indigo-700">{reportData.totalScheduled}</td>
-                   </tr>
-                   <tr className="bg-white">
-                      <td className="p-4 font-bold text-gray-700">Present Count</td>
-                      <td className="p-4 font-extrabold text-green-600">{reportData.presentCount}</td>
-                   </tr>
-                   <tr className="bg-gray-50">
-                      <td className="p-4 font-bold text-gray-700">Student Absent Count</td>
-                      <td className="p-4 font-extrabold text-red-500">{reportData.studentAbsentCount}</td>
-                   </tr>
-                   <tr className="bg-white">
-                      <td className="p-4 font-bold text-gray-700">Teacher Absent Count</td>
-                      <td className="p-4 font-extrabold text-amber-600">{reportData.teacherAbsentCount}</td>
-                   </tr>
-                   <tr className="bg-gray-50">
-                      <td className="p-4 font-bold text-gray-700">Make-up Classes Needed</td>
-                      <td className="p-4 font-extrabold text-orange-600">{reportData.makeupNeeded}</td>
-                   </tr>
-                   <tr className="bg-white">
-                      <td className="p-4 font-bold text-gray-700">Make-up Completed</td>
-                      <td className="p-4 font-extrabold text-blue-600">{reportData.makeupCompletedCount}</td>
-                   </tr>
-                   <tr className="bg-indigo-50 border-t-2 border-indigo-200">
-                      <td className="p-4 font-extrabold text-[#213568] uppercase tracking-wider text-xs">Overall Attendance Rate</td>
-                      <td className="p-4 font-extrabold text-indigo-700 text-lg">{reportData.attendanceRate}%</td>
-                   </tr>
-                </tbody>
-             </table>
-           </div>
+                <h3 className={`text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2 ${pageIndex > 0 ? 'mt-8 print:mt-0 print:hidden' : ''}`}>
+                   {pageIndex === 0 ? 'Detailed Attendance Records' : 'Detailed Attendance Records (Continued)'}
+                </h3>
+                
+                {chunk.length > 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-gray-300 mb-4">
+                    <table className="w-full text-[13px] sm:text-sm text-left border-collapse">
+                      <thead className="bg-gray-100 text-gray-600 print:bg-gray-200 border-b border-gray-300">
+                        <tr>
+                          <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-28">Date</th>
+                          <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-28">Day</th>
+                          <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 text-center min-w-[120px] whitespace-nowrap">Time</th>
+                          <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-36">Status</th>
+                          <th className="p-3 font-bold uppercase tracking-wider">Remark</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {chunk.map((row, idx) => (
+                          <tr key={row.id || idx} className="bg-white hover:bg-gray-50 print:hover:bg-transparent">
+                            <td className="p-3 border-r border-gray-200 font-medium text-gray-800">{formatDisplayDate(row.dateStr)}</td>
+                            <td className="p-3 border-r border-gray-200 text-gray-700">{row.dayName}</td>
+                            <td className="p-3 border-r border-gray-200 text-center text-gray-700 min-w-[120px] whitespace-nowrap">{row.time}</td>
+                            <td className={`p-3 border-r border-gray-200 font-bold ${getStatusColor(row.statusKey)}`}>{row.status}</td>
+                            <td className="p-3 text-gray-600 text-xs sm:text-sm">{renderRemark(row)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500 border border-gray-200 rounded-xl bg-gray-50 mb-4">
+                    No records found.
+                  </div>
+                )}
 
-           <h3 className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Detailed Attendance Records</h3>
-           {reportData.finalList.length > 0 ? (
-             <div className="overflow-hidden rounded-xl border border-gray-300 mb-8">
-               <table className="w-full text-[13px] sm:text-sm text-left border-collapse">
-                 <thead className="bg-gray-100 text-gray-600 print:bg-gray-200 border-b border-gray-300">
-                   <tr>
-                     <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-28">Date</th>
-                     <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-28">Day</th>
-                     <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 text-center min-w-[120px] whitespace-nowrap">Time</th>
-                     <th className="p-3 font-bold uppercase tracking-wider border-r border-gray-300 w-36">Status</th>
-                     <th className="p-3 font-bold uppercase tracking-wider">Remark</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-gray-200">
-                   {reportData.finalList.map((row, idx) => (
-                     <tr key={row.id || idx} className="bg-white hover:bg-gray-50 print:hover:bg-transparent">
-                       <td className="p-3 border-r border-gray-200 font-medium text-gray-800">{formatDisplayDate(row.dateStr)}</td>
-                       <td className="p-3 border-r border-gray-200 text-gray-700">{row.dayName}</td>
-                       <td className="p-3 border-r border-gray-200 text-center text-gray-700 min-w-[120px] whitespace-nowrap">{row.time}</td>
-                       <td className={`p-3 border-r border-gray-200 font-bold ${getStatusColor(row.statusKey)}`}>{row.status}</td>
-                       <td className="p-3 text-gray-600 text-xs sm:text-sm">{renderRemark(row)}</td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
+                {pageIndex === chunks.length - 1 && (
+                  <div className="mt-12 text-center text-sm text-gray-500">
+                    <p>This document is an officially generated record from The Oxford School of Language.</p>
+                  </div>
+                )}
              </div>
-           ) : (
-             <div className="p-8 text-center text-gray-500 border border-gray-200 rounded-xl bg-gray-50 mb-8">
-               No classes or attendance records found for this period.
-             </div>
-           )}
+           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-           <div className="mt-12 text-center text-sm text-gray-500">
-             <p>This document is an officially generated record from The Oxford School of Language.</p>
+function AdvancedCourseSummaryReport({ student, onClose }) {
+  const [selectedPackageId, setSelectedPackageId] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  const packages = (student?.attendance || []).filter(r => r.status === 'added_package' || r.status === 'renewal');
+  
+  useEffect(() => {
+    if (!selectedPackageId && packages.length > 0) {
+      setSelectedPackageId(packages[0].id);
+    }
+  }, [packages, selectedPackageId]);
+
+  const activePackage = packages.find(p => p.id === selectedPackageId) || packages[0];
+  const startDateStr = activePackage?.packageStartDate || activePackage?.startDate || activePackage?.date;
+  const endDateStr = activePackage?.packageEndDate || activePackage?.endDate;
+  const schedule = student?.structuredSchedule || [];
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const day = String(date.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const formatScheduleLine = (schedArr) => {
+    if (!schedArr || schedArr.length === 0) return 'No schedule set';
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const sorted = [...schedArr].sort((a,b) => (a.dayOfWeek === 0 ? 7 : a.dayOfWeek) - (b.dayOfWeek === 0 ? 7 : b.dayOfWeek));
+    return sorted.map(s => `${dayNames[s.dayOfWeek]} ${s.startTime}-${s.endTime}`).join(', ');
+  };
+
+  const getChunks = (list, firstLimit, otherLimit) => {
+    const chunks = [];
+    let current = [];
+    list.forEach((item) => {
+      const limit = chunks.length === 0 ? firstLimit : otherLimit;
+      if (current.length >= limit) {
+        chunks.push(current);
+        current = [];
+      }
+      current.push(item);
+    });
+    if (current.length > 0) chunks.push(current);
+    if (chunks.length === 0) chunks.push([]);
+    return chunks;
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportPDF = async () => {
+    setIsGenerating(true);
+    const originalScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    try {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const pages = document.querySelectorAll('#advanced-report-container .pdf-page');
+      
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        
+        const pageEl = pages[i];
+        
+        // Force fixed A4 aspect ratio so elements never bleed off the PDF page
+        const originalWidth = pageEl.style.width;
+        const originalMinHeight = pageEl.style.minHeight;
+        const originalPadding = pageEl.style.padding;
+        
+        pageEl.style.width = '1024px';
+        pageEl.style.minHeight = '1448px'; 
+        pageEl.style.padding = '40px'; 
+        
+        const noPdfElements = Array.from(pageEl.querySelectorAll('.no-pdf'));
+        noPdfElements.forEach(el => el.classList.add('hidden'));
+
+        const canvas = await window.html2canvas(pageEl, { 
+          scale: 2, 
+          useCORS: true, 
+          backgroundColor: '#ffffff',
+          scrollY: 0,
+          windowWidth: 1024 
+        });
+        
+        pageEl.style.width = originalWidth;
+        pageEl.style.minHeight = originalMinHeight;
+        pageEl.style.padding = originalPadding;
+        noPdfElements.forEach(el => el.classList.remove('hidden'));
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+      
+      pdf.save(`Advanced_Summary_${student?.name?.replace(/[^a-z0-9]/gi, '_') || 'Report'}.pdf`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      window.scrollTo(0, originalScrollY);
+      setIsGenerating(false);
+    }
+  };
+
+  const sessions = React.useMemo(() => {
+     if (!startDateStr || !endDateStr || schedule.length === 0) return [];
+     const start = new Date(startDateStr);
+     const end = new Date(endDateStr);
+     const result = [];
+     
+     if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+
+     const scheduleMap = new Map(schedule.map(s => [s.dayOfWeek, s]));
+     
+     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay();
+        if (scheduleMap.has(dayOfWeek)) {
+           const sched = scheduleMap.get(dayOfWeek);
+           result.push({
+             dateObj: new Date(d),
+             dateStr: d.toISOString().split('T')[0],
+             dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek],
+             startTime: sched.startTime,
+             endTime: sched.endTime
+           });
+        }
+     }
+     return result;
+  }, [startDateStr, endDateStr, schedule]);
+
+  const attendanceMap = new Map();
+  (student?.attendance || []).forEach(record => {
+    if (record.status !== 'deleted' && record.status !== 'added_package' && record.status !== 'renewal') {
+       if (!attendanceMap.has(record.date)) {
+           attendanceMap.set(record.date, record);
+       }
+    }
+  });
+
+  const tableData = sessions.map(session => {
+     const att = attendanceMap.get(session.dateStr);
+     let status = 'Scheduled';
+     let remark = '-';
+     
+     if (att) {
+        if (att.status === 'present') status = 'Present';
+        else if (att.status === 'teacher_absent') status = 'Teacher Absent';
+        else if (att.status === 'student_absent' || att.status === 'absent') status = 'Student Absent';
+        else if (att.status === 'makeup') status = 'Make-up';
+        
+        if (att.status === 'makeup') {
+           remark = att.remark || 'Make-up Class';
+           if (!remark.toLowerCase().includes('make-up')) {
+               remark = `Make-up for: ${remark}`;
+           }
+        } else {
+           remark = att.remark || '-';
+        }
+     } else {
+        if (session.dateObj < new Date(new Date().setHours(0,0,0,0))) {
+            status = 'Pending / Missed';
+        }
+     }
+     return { ...session, status, remark };
+  });
+
+  const chunks = getChunks(tableData, 15, 25);
+
+  return (
+    <div className="w-full max-w-4xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 print:shadow-none print:border-none mb-12">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #advanced-report-container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; }
+          .print-page { page-break-after: always; width: 100% !important; max-width: none !important; }
+          .print-page:last-child { page-break-after: auto; }
+          table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; page-break-inside: auto; }
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          th, td { border: 1px solid #d1d5db !important; word-wrap: break-word !important; }
+          .no-pdf, .print\\:hidden { display: none !important; }
+        }
+      `}} />
+      <div className="p-8 print:p-0">
+        <div className="print:hidden no-pdf mb-8 flex justify-between items-center border-b border-gray-100 pb-4">
+           <div>
+              <h2 className="text-2xl font-bold text-[#213568] flex items-center gap-2"><ClipboardList size={24} /> Advanced Course Summary</h2>
+              <p className="text-gray-500 mt-1">Auto-generated schedule matched with attendance.</p>
+           </div>
+           <div className="flex gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
+                <ArrowLeft size={18} /> Back
+              </button>
+              <button onClick={handlePrint} className="px-5 py-2.5 bg-white border-2 border-indigo-600 text-indigo-700 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-sm flex items-center gap-2">
+                Print Report
+              </button>
+              <button onClick={handleExportPDF} disabled={isGenerating} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors shadow-md flex items-center gap-2">
+                {isGenerating ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> : <FileText size={18} />}
+                {isGenerating ? 'Generating...' : 'Export PDF'}
+              </button>
            </div>
         </div>
 
+        {packages.length > 1 && (
+           <div className="mb-6 print:hidden no-pdf bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center gap-3">
+              <label className="text-sm font-bold text-gray-700">Select Package Period:</label>
+              <select value={selectedPackageId} onChange={e => setSelectedPackageId(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-indigo-50 bg-white font-medium">
+                 {packages.map(p => (
+                    <option key={p.id} value={p.id}>
+                       {formatDisplayDate(p.packageStartDate || p.startDate || p.date)} - {formatDisplayDate(p.packageEndDate || p.endDate)} ({p.hours} Hrs)
+                    </option>
+                 ))}
+              </select>
+           </div>
+        )}
+
+        <div id="advanced-report-container" className="print:block bg-white print:w-full">
+           {chunks.map((chunk, pageIndex) => (
+              <div key={pageIndex} className="pdf-page print-page w-full bg-white pb-6">
+                 {pageIndex === 0 && (
+                   <>
+                     <div className="text-center border-b-2 border-[#213568] pb-6 mb-8">
+                        <h1 className="text-3xl font-extrabold uppercase tracking-widest text-[#213568]">Oxford School of Language</h1>
+                        <h2 className="text-xl font-bold text-gray-600 uppercase tracking-widest mt-2">Course Attendance Summary</h2>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-8 text-[15px]">
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Student Name</span> <span className="font-bold text-gray-900">{student?.name}</span></div>
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Total Sessions</span> <span className="font-bold text-gray-900">{sessions.length} Classes</span></div>
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Course Period</span> <span className="font-bold text-gray-900">{formatDisplayDate(startDateStr)} – {formatDisplayDate(endDateStr)}</span></div>
+                        <div className="flex items-center"><span className="font-bold text-gray-500 w-40 uppercase text-xs tracking-wider">Class Schedule</span> <span className="font-bold text-gray-900">{formatScheduleLine(schedule)}</span></div>
+                     </div>
+                   </>
+                 )}
+
+                 {pageIndex > 0 && (
+                   <div className="hidden print:block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-100 pb-2">
+                     Course Summary Continued - {student?.name}
+                   </div>
+                 )}
+
+                 {chunk.length > 0 ? (
+                   <div className="overflow-hidden rounded-xl border border-gray-300 mb-4">
+                     <table className="w-full text-[13px] sm:text-sm border-collapse">
+                        <thead className="bg-gray-100 text-gray-600 print:bg-gray-200">
+                           <tr>
+                              <th className="border border-gray-300 p-3 text-left font-bold uppercase tracking-wider w-28">Date</th>
+                              <th className="border border-gray-300 p-3 text-left font-bold uppercase tracking-wider w-28">Day</th>
+                              <th className="border border-gray-300 p-3 text-center font-bold uppercase tracking-wider min-w-[120px] whitespace-nowrap">Time</th>
+                              <th className="border border-gray-300 p-3 text-center font-bold uppercase tracking-wider w-36">Status</th>
+                              <th className="border border-gray-300 p-3 text-left font-bold uppercase tracking-wider">Remark</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {chunk.map((row, i) => {
+                              let statusColor = 'text-gray-900';
+                              if (row.status === 'Present') statusColor = 'text-green-700';
+                              if (row.status === 'Teacher Absent') statusColor = 'text-amber-600';
+                              if (row.status === 'Student Absent') statusColor = 'text-red-600';
+                              if (row.status === 'Make-up') statusColor = 'text-blue-600';
+                              if (row.status === 'Pending / Missed') statusColor = 'text-gray-400 italic';
+
+                              return (
+                                <tr key={i} className="hover:bg-gray-50 print:hover:bg-transparent">
+                                   <td className="border border-gray-300 p-3 font-medium text-gray-800">{formatDisplayDate(row.dateStr)}</td>
+                                   <td className="border border-gray-300 p-3 text-gray-700">{row.dayName}</td>
+                                   <td className="border border-gray-300 p-3 text-center text-gray-700 min-w-[120px] whitespace-nowrap">{row.startTime} – {row.endTime}</td>
+                                   <td className={`border border-gray-300 p-3 text-center font-bold ${statusColor}`}>
+                                      {row.status}
+                                   </td>
+                                   <td className="border border-gray-300 p-3 text-gray-600 text-xs sm:text-sm">{row.remark}</td>
+                                </tr>
+                              );
+                           })}
+                        </tbody>
+                     </table>
+                   </div>
+                 ) : (
+                   <div className="p-12 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 mb-4">
+                      <p className="text-gray-500 font-medium">No valid package dates or schedule found. Ensure the student has an active package and a weekly schedule set.</p>
+                   </div>
+                 )}
+
+                 {pageIndex === chunks.length - 1 && (
+                   <div className="mt-12 text-center text-sm text-gray-500">
+                     <p>This document is an officially generated record from The Oxford School of Language.</p>
+                   </div>
+                 )}
+              </div>
+           ))}
+        </div>
       </div>
     </div>
   );
@@ -2209,13 +4546,16 @@ function App() {
     adminCalendarUrl: '',
     certificateTemplate: null,
     certificateSettings: defaultCertSettings,
+    courses: DEFAULT_COURSES,
     events: [],
     users: [],
-    students: []
+    students: [],
+    lessonReports: []
   });
   
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [language, setLanguage] = useState(() => localStorage.getItem('app_lang') || 'en');
 
   // --- ENTER KEY GLOBAL HANDLER ---
   useEffect(() => {
@@ -2266,6 +4606,7 @@ function App() {
     if (!firebaseUser) return;
 
     let isSeeding = false;
+    let isMounted = true;
 
     const seedDbIfNeeded = async () => {
       if (isSeeding) return;
@@ -2280,7 +4621,8 @@ function App() {
           batch.set(getPublicDoc('settings', 'global'), {
             adminCalendarUrl: initDb.adminCalendarUrl,
             certificateTemplate: initDb.certificateTemplate,
-            certificateSettings: initDb.certificateSettings
+            certificateSettings: initDb.certificateSettings,
+            courses: initDb.courses
           });
           
           initDb.users.forEach(u => batch.set(getPublicDoc('users', u.id), u));
@@ -2289,44 +4631,60 @@ function App() {
           
           await batch.commit();
         }
-        setIsDbLoaded(true);
+        if (isMounted) {
+          setIsDbLoaded(true);
+        }
       } catch (error) {
         console.error("Seeding error:", error);
-        setIsDbLoaded(true);
+        if (isMounted) {
+          setIsDbLoaded(true);
+        }
       }
     };
     
     seedDbIfNeeded();
 
     const unsubUsers = onSnapshot(getPublicCollection('users'), (snapshot) => {
+      if (!isMounted) return;
       setDb(prev => ({ ...prev, users: snapshot.docs.map(d => d.data()) }));
     }, console.error);
 
     const unsubStudents = onSnapshot(getPublicCollection('students'), (snapshot) => {
+      if (!isMounted) return;
       setDb(prev => ({ ...prev, students: snapshot.docs.map(d => d.data()) }));
     }, console.error);
 
     const unsubEvents = onSnapshot(getPublicCollection('events'), (snapshot) => {
+      if (!isMounted) return;
       setDb(prev => ({ ...prev, events: snapshot.docs.map(d => d.data()) }));
     }, console.error);
 
+    const unsubLessonReports = onSnapshot(getPublicCollection('lesson_reports'), (snapshot) => {
+      if (!isMounted) return;
+      setDb(prev => ({ ...prev, lessonReports: snapshot.docs.map(d => d.data()) }));
+    }, console.error);
+
     const unsubSettings = onSnapshot(getPublicDoc('settings', 'global'), (docSnap) => {
+      if (!isMounted) return;
       if (docSnap.exists()) {
         const data = docSnap.data();
         setDb(prev => ({ 
           ...prev, 
           adminCalendarUrl: data.adminCalendarUrl || '',
           certificateTemplate: data.certificateTemplate || null,
-          certificateSettings: data.certificateSettings || defaultCertSettings
+          certificateSettings: data.certificateSettings || defaultCertSettings,
+          courses: data.courses && data.courses.length > 0 ? data.courses : DEFAULT_COURSES
         }));
       }
     }, console.error);
 
     return () => {
+      isMounted = false;
       unsubUsers();
       unsubStudents();
       unsubEvents();
       unsubSettings();
+      unsubLessonReports();
     };
   }, [firebaseUser]);
 
@@ -2341,6 +4699,7 @@ function App() {
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({});
   const [calendarTeacherFilter, setCalendarTeacherFilter] = useState('all');
+  const [newCourseName, setNewCourseName] = useState('');
   
   const [draftReport, setDraftReport] = useState(null); // Shared state for editor and preview
   
@@ -2362,6 +4721,136 @@ function App() {
     }
   }, [currentView]);
 
+  useEffect(() => {
+    localStorage.setItem('app_lang', language);
+  }, [language]);
+
+  const t = (key) => translations[language]?.[key] || translations.en?.[key] || key;
+
+  // --- AUTO-GENERATE CLASS CALENDAR EVENTS ---
+  const allCalendarEvents = React.useMemo(() => {
+    const classEvents = [];
+    const attendanceEvents = [];
+    
+    db.students.filter(s => s.status !== 'resigned').forEach(student => {
+      const teacher = db.users.find(u => u.id === student.teacherId);
+      const teacherName = teacher ? teacher.name : 'Unassigned';
+
+      // Determine Course Name
+      let courseString = 'Class';
+      const completedReports = (student.reports || []).filter(r => r.status === 'completed');
+      if (completedReports.length > 0) {
+         const latest = completedReports[completedReports.length - 1];
+         courseString = `${latest.data.schoolCourse} ${latest.data.level}`;
+      } else if (student.reports && student.reports.length > 0) {
+         const latest = student.reports[student.reports.length - 1];
+         courseString = `${latest.data.schoolCourse} ${latest.data.level}`;
+      }
+
+      // Extract Nickname (Inside Parentheses) or First Name
+      const safeStudentName = student?.name || '';
+      let studentDisplay = safeStudentName || 'Unknown';
+      const match = safeStudentName.match(/\(([^)]+)\)/);
+      if (match) {
+         studentDisplay = match[1];
+      } else {
+        studentDisplay = safeStudentName.split(' ')[0] || 'Unknown';
+      }
+
+      const title = `${studentDisplay} – ${courseString} (${teacherName})`;
+
+      // Boundary Dates
+      const packages = (student.attendance || []).filter(r => r.status === 'added_package' || r.status === 'renewal');
+      let startRecur, endRecur;
+      if (packages.length > 0) {
+         const activePkg = packages[0];
+         startRecur = activePkg.packageStartDate || activePkg.startDate || activePkg.date;
+         endRecur = activePkg.packageEndDate || activePkg.endDate;
+      }
+
+      if (student.structuredSchedule) {
+        student.structuredSchedule.forEach(sched => {
+           const evt = {
+             id: `class_${student.id}_${sched.dayOfWeek}_${sched.startTime}`,
+             title: title,
+             daysOfWeek: [sched.dayOfWeek],
+             startTime: sched.startTime,
+             endTime: sched.endTime,
+             backgroundColor: '#3b82f6', // Tailwind blue-500
+             borderColor: '#2563eb',     // Tailwind blue-600
+             teacherId: student.teacherId,
+             type: 'class'
+           };
+           
+           if (startRecur) evt.startRecur = startRecur;
+           if (endRecur) {
+             const ed = new Date(endRecur);
+             if (!isNaN(ed.getTime())) {
+               ed.setDate(ed.getDate() + 1); // FullCalendar is exclusive on end dates
+               evt.endRecur = ed.toISOString().split('T')[0];
+             }
+           }
+           classEvents.push(evt);
+        });
+      }
+    });
+
+    // AUTO-GENERATE ATTENDANCE EVENTS
+    db.students.forEach(student => {
+      (student.attendance || []).forEach(record => {
+        if (record.status === 'added_package' || record.status === 'renewal' || record.status === 'deleted') return;
+
+        let statusLabel = '';
+        let bgColor = '#9ca3af';
+
+        switch (record.status) {
+          case 'present':
+            statusLabel = '✔️ Present';
+            bgColor = '#22c55e'; // Green
+            break;
+          case 'makeup':
+            statusLabel = '🔄 Make-up';
+            bgColor = '#3b82f6'; // Blue
+            break;
+          case 'student_absent':
+          case 'absent':
+            statusLabel = '❌ Absent';
+            bgColor = '#ef4444'; // Red
+            break;
+          case 'teacher_absent':
+            statusLabel = '⚠️ Tchr Absent';
+            bgColor = '#f59e0b'; // Amber
+            break;
+          default:
+            statusLabel = record.status;
+        }
+
+        // Extract Nickname (Inside Parentheses) or First Name
+        const safeStudentName = student?.name || '';
+        let studentDisplay = safeStudentName || 'Unknown';
+        const match = safeStudentName.match(/\(([^)]+)\)/);
+        if (match) studentDisplay = match[1];
+        else studentDisplay = safeStudentName.split(' ')[0] || 'Unknown';
+
+        const remarkText = record.remark ? ` (${record.remark})` : '';
+
+        attendanceEvents.push({
+          id: `cal_att_${student.id}_${record.id}`,
+          title: `${statusLabel}: ${studentDisplay}${remarkText}`,
+          date: record.date, // Maps perfectly to an all-day event
+          allDay: true,
+          backgroundColor: bgColor,
+          borderColor: bgColor,
+          type: 'attendance',
+          teacherId: student.teacherId,
+          studentId: student.id // Used for strict privacy filtering in the student portal
+        });
+      });
+    });
+
+    return [...db.events, ...classEvents, ...attendanceEvents];
+  }, [db.students, db.events, db.users]);
+
   if (!isDbLoaded) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
@@ -2377,22 +4866,33 @@ function App() {
     e.preventDefault();
     const { username, password } = loginForm;
     
-    // Check Admin / Teacher
+    // Check Main Users Table (Admin, Teacher, Student)
     const user = db.users.find(u => u.username === username && u.password === password);
     if (user) {
-      setCurrentUser(user);
-      if (user.role === 'superadmin') {
-         setCalendarInputUrl(db.adminCalendarUrl || '');
+      if (user.role === 'student' || user.role === 'parent') {
+         const linkedStudent = db.students.find(s => s.id === user.studentId);
+         if (!linkedStudent) {
+            showModal('ALERT', { title: 'Login Error', message: 'Your account is not linked to a valid student profile. Please contact an administrator.'});
+            return;
+         }
+         setCurrentUser(user);
+         setCurrentStudentId(linkedStudent.id);
+         setCurrentView('dashboard');
+      } else {
+         setCurrentUser(user);
+         if (user.role === 'superadmin') {
+            setCalendarInputUrl(db.adminCalendarUrl || '');
+         }
+         setCurrentView('dashboard');
       }
-      setCurrentView('dashboard');
       return;
     }
     
-    // Check Student
-    const student = db.students.find(s => s.username === username && s.password === password);
-    if (student) {
-      setCurrentUser({ ...student, role: 'student' });
-      setCurrentStudentId(student.id);
+    // Legacy Fallback Check (Prevent breaking demo data prior to migration)
+    const legacyStudent = db.students.find(s => s.username === username && s.password === password);
+    if (legacyStudent) {
+      setCurrentUser({ ...legacyStudent, role: 'student', studentId: legacyStudent.id });
+      setCurrentStudentId(legacyStudent.id);
       setCurrentView('dashboard');
       return;
     }
@@ -2426,6 +4926,19 @@ function App() {
       setCalendarInputUrl(finalUrl);
       showModal('ALERT', { title: 'Calendar Linked', message: 'The School Master Calendar has been successfully linked to the Cloud!' });
     }).catch(console.error);
+  };
+
+  const handleAddCourse = () => {
+    if (!newCourseName.trim()) return;
+    const updatedCourses = [...(db.courses || DEFAULT_COURSES), { id: `c_${Date.now()}`, name: newCourseName.trim() }];
+    setDoc(getPublicDoc('settings', 'global'), { courses: updatedCourses }, { merge: true })
+      .then(() => setNewCourseName(''))
+      .catch(console.error);
+  };
+
+  const handleDeleteCourse = (courseId) => {
+    const updatedCourses = (db.courses || DEFAULT_COURSES).filter(c => c.id !== courseId);
+    setDoc(getPublicDoc('settings', 'global'), { courses: updatedCourses }, { merge: true }).catch(console.error);
   };
 
   const updateReportData = (studentId, reportId, newData) => {
@@ -2544,14 +5057,16 @@ function App() {
     });
   };
 
-  const handleCertTemplateUpload = (e) => {
+  const handleCertTemplateUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDoc(getPublicDoc('settings', 'global'), { certificateTemplate: reader.result }, { merge: true }).catch(console.error);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file, 1600, 0.7); // Resize template for DB
+        setDoc(getPublicDoc('settings', 'global'), { certificateTemplate: compressedBase64 }, { merge: true }).catch(console.error);
+      } catch (error) {
+        console.error("Template compression failed:", error);
+        alert("Failed to process template image. Please try a smaller file.");
+      }
     } else {
         setDoc(getPublicDoc('settings', 'global'), { certificateTemplate: null }, { merge: true }).catch(console.error);
     }
@@ -2566,7 +5081,7 @@ function App() {
       onSubmit: (newStudentName) => {
         const newStudent = {
           id: `s${Date.now()}`, teacherId: null, name: newStudentName, profileImage: null,
-          tel: '', email: '', lineId: '', notes: '', schedule: '', status: 'active', registeredHours: 0, attendance: [], customInfo: [], lessonLogs: [],
+          tel: '', email: '', lineId: '', notes: '', schedule: '', status: 'active', registeredHours: 0, credit_balance: 0, attendance: [], customInfo: [], lessonLogs: [],
           certificateStatus: 'none', certificateDate: null, certificateCode: null, reports: []
         };
         setDoc(getPublicDoc('students', newStudent.id), newStudent).catch(console.error);
@@ -2576,10 +5091,17 @@ function App() {
 
   const openAddUserModal = () => {
     showModal('ADD_USER', {
-      onSubmit: ({ name, username, password, role }) => {
-        const newUser = { 
-          id: `u_${Date.now()}`, name, username, password, role, profileImage: null, calendarUrl: '',
-          permissions: { canEditReports: true, canRequestCertificates: true, canEditStudentInfo: true, canManageAttendance: true, canViewPhone: false, canViewEmail: false, canViewLineId: false, canViewNotes: false, canViewPrivateCustomInfo: false }
+      onSubmit: (userData) => {
+        const newUser = {
+          id: `u_${Date.now()}`, 
+          ...userData, 
+          profileImage: null, 
+          calendarUrl: '',
+          permissions: userData.role === 'teacher' ? { 
+            canEditReports: true, canRequestCertificates: true, canEditStudentInfo: true, 
+            canManageAttendance: true, canViewPhone: false, canViewEmail: false, 
+            canViewLineId: false, canViewNotes: false, canViewPrivateCustomInfo: false 
+          } : {}
         };
         setDoc(getPublicDoc('users', newUser.id), newUser).catch(console.error);
       }
@@ -2587,74 +5109,61 @@ function App() {
   };
 
   const confirmRemoveUser = (userId) => {
-    const userToDelete = db.users.find(u => u.id === userId);
-    if (!userToDelete) return;
-    if (userToDelete.role === 'superadmin' && db.users.filter(u => u.role === 'superadmin').length <= 1) {
-       showModal('ALERT', { title: 'Action Denied', message: 'You cannot delete the last Super Admin account.' });
-       return;
-    }
-    if (userId === currentUser.id) {
-       showModal('ALERT', { title: 'Action Denied', message: 'You cannot delete your own account while logged in.' });
-       return;
-    }
     showModal('CONFIRM', {
       title: 'Remove User',
-      message: `Are you sure you want to remove ${userToDelete.name}? If they are a teacher, their students will become unassigned.`,
-      onConfirm: async () => {
-        try {
-          const batch = writeBatch(firestoreDb);
-          batch.delete(getPublicDoc('users', userId));
-          db.students.filter(s => s.teacherId === userId).forEach(s => {
-            batch.update(getPublicDoc('students', s.id), { teacherId: null });
-          });
-          await batch.commit();
-        } catch (e) {
-          console.error(e);
-        }
+      message: 'Are you sure you want to permanently delete this user account?',
+      onConfirm: () => {
+        deleteDoc(getPublicDoc('users', userId)).catch(console.error);
       }
     });
   };
 
-  const handleAdminPhotoUpload = (type, id, e) => {
+  const handleAdminPhotoUpload = async (type, id, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    try {
+      const compressedBase64 = await compressImage(file, 400, 0.7); // Small size for profiles
       if (type === 'user') {
-        updateDoc(getPublicDoc('users', id), { profileImage: reader.result }).catch(console.error);
+        updateDoc(getPublicDoc('users', id), { profileImage: compressedBase64 }).catch(console.error);
       } else if (type === 'student') {
         const student = db.students.find(s => s.id === id);
         if(!student) return;
-        const updatedReports = student.reports.map(r => ({ ...r, data: { ...r.data, profileImage: reader.result } }));
-        updateDoc(getPublicDoc('students', id), { profileImage: reader.result, reports: updatedReports }).catch(console.error);
+        const updatedReports = student.reports.map(r => ({ ...r, data: { ...r.data, profileImage: compressedBase64 } }));
+        updateDoc(getPublicDoc('students', id), { profileImage: compressedBase64, reports: updatedReports }).catch(console.error);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      alert("Failed to process image. Please try a smaller file.");
+    }
   };
 
-  const handleFileUpload = (field, e) => {
+  const handleFileUpload = async (field, e) => {
     const file = e.target.files[0];
     if (file && currentStudentId && currentReportId) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const maxWidth = field === 'profileImage' ? 400 : 800; // Profile vs Logo/Signature
+        const compressedBase64 = await compressImage(file, maxWidth, 0.7);
+        
         if (field === 'profileImage') {
           const student = db.students.find(s => s.id === currentStudentId);
           if(!student) return;
-          const updatedReports = student.reports.map(r => ({ ...r, data: { ...r.data, profileImage: reader.result } }));
-          updateDoc(getPublicDoc('students', currentStudentId), { profileImage: reader.result, reports: updatedReports }).catch(console.error);
+          const updatedReports = student.reports.map(r => ({ ...r, data: { ...r.data, profileImage: compressedBase64 } }));
+          updateDoc(getPublicDoc('students', currentStudentId), { profileImage: compressedBase64, reports: updatedReports }).catch(console.error);
           
-          if (draftReport) setDraftReport({ ...draftReport, profileImage: reader.result });
+          if (draftReport) setDraftReport({ ...draftReport, profileImage: compressedBase64 });
         } else {
           const student = db.students.find(s => s.id === currentStudentId);
           const report = student.reports.find(r => r.id === currentReportId);
           const baseData = draftReport || report.data;
-          const updatedData = { ...baseData, [field]: reader.result };
+          const updatedData = { ...baseData, [field]: compressedBase64 };
           
           if (draftReport) setDraftReport(updatedData);
           updateReportData(currentStudentId, currentReportId, updatedData);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error("Image compression failed:", error);
+        alert("Failed to process image. Please try a smaller file.");
+      }
     }
   };
 
@@ -2668,63 +5177,43 @@ function App() {
   };
 
   const adminFilteredCalEvents = calendarTeacherFilter === 'all' 
-    ? db.events 
-    : db.events.filter(e => e.type === 'global' || e.teacherId === calendarTeacherFilter);
-
-  const adminFilteredCalStudents = calendarTeacherFilter === 'all'
-    ? db.students
-    : db.students.filter(s => s.teacherId === calendarTeacherFilter);
+    ? allCalendarEvents 
+    : allCalendarEvents.filter(e => e.type === 'global' || e.teacherId === calendarTeacherFilter);
 
   return (
-    <>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       <ModalManager modalState={modalState} closeModal={closeModal} />
       {!currentUser ? (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6 relative">
+          <div className="absolute top-4 right-4 flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm">
+            <button onClick={() => setLanguage('en')} className={`text-xs font-bold ${language === 'en' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>EN</button>
+            <span className="text-gray-300">|</span>
+            <button onClick={() => setLanguage('th')} className={`text-xs font-bold ${language === 'th' ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>TH</button>
+          </div>
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
             <div className="bg-[#213568] p-8 text-center">
               <GraduationCap size={48} className="mx-auto text-white mb-4" />
-              <h1 className="text-2xl font-bold text-white tracking-widest uppercase">The Oxford School</h1>
-              <p className="text-[#8eb3e6] mt-2 font-medium">Language Portal Login</p>
+              <h1 className="text-2xl font-bold text-white tracking-widest uppercase">{t('login_title')}</h1>
+              <p className="text-[#8eb3e6] mt-2 font-medium">{t('login_subtitle')}</p>
             </div>
             <div className="p-8">
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Login ID / Username</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">{t('login_id')}</label>
                   <div className="relative">
                     <UserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     <input type="text" required value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} className="w-full pl-10 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#f09e5e] focus:border-[#f09e5e] outline-none transition-all" placeholder="Enter ID" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Password</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5 uppercase tracking-wide">{t('password')}</label>
                   <div className="relative">
                     <ShieldCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                     <input type="password" required value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} className="w-full pl-10 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#f09e5e] focus:border-[#f09e5e] outline-none transition-all" placeholder="Enter Password" />
                   </div>
                 </div>
-                <button type="submit" className="w-full py-4 mt-2 bg-[#f09e5e] hover:bg-orange-500 text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-md text-lg">Log In &rarr;</button>
+                <button type="submit" className="w-full py-4 mt-2 bg-[#f09e5e] hover:bg-orange-500 text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-md text-lg">{t('login_btn')} &rarr;</button>
               </form>
-              <div className="mt-6 text-center text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
-                <strong className="text-gray-700 mb-2 block uppercase tracking-wider text-xs">Registered Accounts:</strong>
-                {db.users && db.users.filter(u => u.role === 'superadmin').slice(0, 1).map(admin => (
-                  <div key={admin.id} className="flex justify-between items-center px-4 py-1">
-                    <span>Admin ({admin.name}):</span>
-                    <span className="font-mono text-indigo-700 font-bold bg-indigo-50 px-2 rounded">{admin.username} / {admin.password}</span>
-                  </div>
-                ))}
-                {db.users && db.users.filter(u => u.role === 'teacher').slice(0, 1).map(teacher => (
-                   <div key={teacher.id} className="flex justify-between items-center px-4 py-1">
-                    <span>Teacher ({teacher.name}):</span>
-                    <span className="font-mono text-orange-600 font-bold bg-orange-50 px-2 rounded">{teacher.username} / {teacher.password}</span>
-                  </div>
-                ))}
-                {db.students && db.students.slice(0, 1).map(student => (
-                   <div key={student.id} className="flex justify-between items-center px-4 py-1">
-                    <span>Student ({student.name.split(' ')[0]}):</span>
-                    <span className="font-mono text-blue-600 font-bold bg-blue-50 px-2 rounded">{student.username || 's1'} / {student.password || '123'}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -2734,40 +5223,37 @@ function App() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-[#213568] font-bold text-xl border-r-2 pr-6">
                 <GraduationCap size={28} />
-                <span className="hidden sm:inline">Oxford Portal</span>
+                <span className="hidden sm:inline">{t('portal_title')}</span>
               </div>
               
               {/* Admins & Teachers - Breadcrumbs */}
-              {currentUser.role !== 'student' && (currentView === 'student_profile' || currentView === 'certificate_view' || currentView === 'advanced_summary' || currentView === 'attendance_summary') && (
+              {currentUser.role !== 'student' && currentUser.role !== 'parent' && (currentView === 'student_profile' || currentView === 'certificate_view' || currentView === 'advanced_summary' || currentView === 'attendance_summary' || currentView === 'student_payments') && (
                 <button onClick={() => { setCurrentView('dashboard'); setCurrentStudentId(null); }} className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors font-semibold bg-gray-50 px-3 py-1.5 rounded-md">
-                  <ArrowLeft size={16} /> Back to Dashboard
+                  <ArrowLeft size={16} /> {t('back_dashboard')}
                 </button>
               )}
 
-              {currentUser.role !== 'student' && (currentView === 'edit_report' || currentView === 'final_report') && currentStudentId && currentReportId && (
+              {currentUser.role !== 'student' && currentUser.role !== 'parent' && (currentView === 'edit_report' || currentView === 'final_report') && currentStudentId && currentReportId && (
                 <>
                   <button onClick={() => { setCurrentView('student_profile'); setCurrentReportId(null); }} className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors font-semibold bg-gray-50 px-3 py-1.5 rounded-md">
-                    <ArrowLeft size={16} /> Student History
+                    <ArrowLeft size={16} /> Back to Profile
                   </button>
-                  <div className="flex bg-gray-100 rounded-lg p-1 ml-2 border border-gray-200">
-                    <button onClick={() => setCurrentView('edit_report')} className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm ${currentView === 'edit_report' ? 'bg-indigo-600 shadow-sm text-white font-semibold' : 'text-gray-600 hover:text-gray-900'}`}>
-                      <Settings size={16} /> Edit Report
-                    </button>
-                    <button onClick={() => setCurrentView('final_report')} className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all text-sm ${currentView === 'final_report' ? 'bg-white shadow-sm text-indigo-700 font-semibold' : 'text-gray-600 hover:text-gray-900'}`}>
-                      <FileText size={16} /> Final Preview
-                    </button>
-                  </div>
                 </>
               )}
 
               {/* Students - Breadcrumbs */}
-              {currentUser.role === 'student' && (currentView === 'final_report' || currentView === 'certificate_view') && (
-                 <button onClick={() => { setCurrentView('dashboard'); setCurrentStudentId(currentUser.id); setCurrentReportId(null); }} className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors font-semibold bg-gray-50 px-3 py-1.5 rounded-md">
-                   <ArrowLeft size={16} /> Back to My Portal
+              {(currentUser.role === 'student' || currentUser.role === 'parent') && (currentView === 'final_report' || currentView === 'certificate_view' || currentView === 'student_payments' || currentView === 'attendance_summary' || currentView === 'advanced_summary') && (
+                 <button onClick={() => { setCurrentView('dashboard'); setCurrentStudentId(currentUser.studentId || currentUser.id); setCurrentReportId(null); }} className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 transition-colors font-semibold bg-gray-50 px-3 py-1.5 rounded-md">
+                   <ArrowLeft size={16} /> {t('back_portal')}
                  </button>
               )}
             </div>
             <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 border-r border-gray-200 pr-4">
+                <button onClick={() => setLanguage('en')} className={`text-xs font-bold ${language === 'en' ? 'text-indigo-600 underline' : 'text-gray-400 hover:text-gray-600'}`}>EN</button>
+                <span className="text-gray-300">|</span>
+                <button onClick={() => setLanguage('th')} className={`text-xs font-bold ${language === 'th' ? 'text-indigo-600 underline' : 'text-gray-400 hover:text-gray-600'}`}>TH</button>
+              </div>
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-bold text-gray-800">{currentUser.name}</div>
                 <div className="text-xs text-gray-500 uppercase tracking-wider">{currentUser.role}</div>
@@ -2779,363 +5265,358 @@ function App() {
           <div className="flex-1 p-6 flex justify-center items-start overflow-y-auto">
 
             {/* STUDENT PORTAL DASHBOARD */}
-            {currentUser.role === 'student' && currentView === 'dashboard' && (() => {
-              const student = db.students.find(s => s.id === currentUser.id);
-              if (!student) return null;
-
-              const totalAttended = (student.attendance || []).reduce((sum, record) => (record.status === 'present' || record.status === 'makeup') ? sum + (record.hours || 0) : sum, 0);
-              const addedPackageHours = (student.attendance || []).reduce((sum, record) => (record.status === 'added_package' || record.status === 'renewal') ? sum + (Number(record.hours) || 0) : sum, 0);
-              const remainingHours = (student.registeredHours || 0) + addedPackageHours - totalAttended;
-
-              return (
-                <div className="w-full max-w-5xl">
-                  {/* Welcome Header */}
-                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between mb-8 gap-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 flex items-center justify-center shrink-0">
-                         {student.profileImage ? <img src={student.profileImage} className="w-full h-full object-cover" alt="Student"/> : <UserCircle size={48} className="text-gray-300"/>}
-                      </div>
-                      <div>
-                        <h2 className="text-3xl font-extrabold text-[#213568] flex items-center gap-3">
-                          Welcome, {student.name.split(' ')[0]}!
-                          {student.certificateStatus === 'approved' && <Award size={28} className="text-yellow-500 drop-shadow" title="Certified" />}
-                        </h2>
-                        <p className="text-gray-500 font-medium mt-1">My Student Portal</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                     {/* Left Col: Hours & Info */}
-                     <div className="lg:col-span-1 space-y-6">
-                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                         <div className="bg-indigo-50 border-b border-indigo-100 p-4">
-                           <h3 className="font-bold text-indigo-900 flex items-center gap-2"><ClipboardList size={18}/> My Hours Balance</h3>
-                         </div>
-                         <div className="p-5 flex flex-col gap-4">
-                           <div className="flex justify-between items-center border-b pb-3">
-                             <span className="text-sm font-semibold text-gray-600">Total Registered</span>
-                             <span className="font-extrabold text-gray-800">{formatTime((student.registeredHours || 0) + addedPackageHours)}</span>
-                           </div>
-                           <div className="flex justify-between items-center border-b pb-3">
-                             <span className="text-sm font-semibold text-gray-600">Hours Used</span>
-                             <span className="font-extrabold text-indigo-600">{formatTime(totalAttended)}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                             <span className="text-sm font-semibold text-gray-600">Remaining</span>
-                             <span className={`text-lg font-extrabold ${remainingHours > 0 ? 'text-green-600' : 'text-red-500'}`}>{formatTime(remainingHours)}</span>
-                           </div>
-                         </div>
-                       </div>
-
-                       {student.certificateStatus === 'approved' && (
-                         <div className="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden text-center p-6 bg-gradient-to-b from-white to-yellow-50">
-                            <Award size={40} className="mx-auto text-yellow-500 mb-3" />
-                            <h3 className="font-bold text-yellow-900 mb-2">Official Certificate</h3>
-                            <button onClick={() => { setCurrentStudentId(student.id); setCurrentView('certificate_view'); }} className="w-full border-2 border-yellow-500 text-yellow-700 bg-white font-bold py-2 rounded-lg hover:bg-yellow-50 transition-colors">
-                              View Diploma
-                            </button>
-                         </div>
-                       )}
-                     </div>
-
-                     {/* Right Col: Reports & Schedule */}
-                     <div className="lg:col-span-2 space-y-8">
-                       
-                       <div>
-                         <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><FileText className="text-[#f09e5e]" size={24}/> My Report Cards</h3>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                           {(student.reports || []).filter(r => r.status === 'completed').map(report => {
-                             const themeColor = getThemeColor(report.data.schoolCourse, report.data.level);
-                             return (
-                                <div key={report.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col relative">
-                                  <div className="h-2 w-full" style={{ backgroundColor: themeColor }}></div>
-                                  <div className="p-5 flex-1">
-                                    <div className="text-xs font-bold text-gray-400 mb-1 tracking-wider uppercase">{report.data.schoolCourse}</div>
-                                    <h4 className="text-lg font-extrabold text-gray-900 mb-3">Level {report.data.level}</h4>
-                                    <div className="text-xs text-gray-500 mb-4">Date: <span className="font-semibold">{report.date}</span></div>
-                                    <button onClick={() => { setCurrentStudentId(student.id); setCurrentReportId(report.id); setCurrentView('final_report'); }} className="w-full bg-gray-50 border border-gray-200 text-indigo-700 py-2 rounded-lg text-sm font-bold hover:bg-indigo-50 hover:border-indigo-200 transition-colors flex items-center justify-center gap-2"><FileText size={16} /> View Report</button>
-                                  </div>
-                                </div>
-                             )
-                           })}
-                           {(student.reports || []).filter(r => r.status === 'completed').length === 0 && (
-                             <div className="col-span-full py-8 text-center text-gray-400 italic bg-white rounded-xl border border-gray-200 shadow-sm">No completed reports available yet.</div>
-                           )}
-                         </div>
-                       </div>
-
-                       <div>
-                         <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Calendar className="text-indigo-600" size={24}/> My Schedule</h3>
-                         <div className="h-[500px]">
-                           <NativeCalendar />
-                         </div>
-                       </div>
-                     </div>
-                  </div>
-                </div>
-              );
-            })()}
+            {(currentUser.role === 'student' || currentUser.role === 'parent') && currentView === 'dashboard' && (
+              <StudentDashboardPage 
+                student={db.students.find(s => s.id === currentUser.studentId) || db.students.find(s => s.id === currentUser.id)} 
+                db={db} 
+                showModal={showModal} 
+                allCalendarEvents={allCalendarEvents || []} 
+                onNavigate={(view, sid) => { setCurrentStudentId(sid); setCurrentView(view); }}
+              />
+            )}
 
             {/* SUPER ADMIN DASHBOARD */}
             {currentUser.role === 'superadmin' && currentView === 'dashboard' && (
-              <div className="w-full max-w-5xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200">
-                <div className="bg-[#213568] p-6 text-white flex justify-between items-center">
+              <div className="w-full max-w-6xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 flex flex-col">
+                <div className="bg-[#213568] p-6 text-white flex justify-between items-center shrink-0">
                   <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-2"><ShieldCheck size={24} /> Super Admin Dashboard</h2>
+                    <h2 className="text-2xl font-bold flex items-center gap-2"><ShieldCheck size={24} /> {t('super_admin_dashboard')}</h2>
                     <p className="text-indigo-200 mt-1">Manage users, students, and certificates.</p>
                   </div>
                   <div className="flex gap-3">
                     {adminTab === 'students' ? (
                       <button onClick={openAddStudentModal} className="bg-white text-[#213568] hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-                        <UserPlus size={18} /> New Student
+                        <UserPlus size={18} /> {t('new_student')}
                       </button>
                     ) : adminTab === 'users' ? (
                       <button onClick={openAddUserModal} className="bg-white text-[#213568] hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-                        <UserPlus size={18} /> New User
+                        <UserPlus size={18} /> {t('new_user')}
                       </button>
+                    ) : adminTab === 'certificates' ? (
+                      <>
+                        <button onClick={() => { setCurrentStudentId(null); setCurrentView('certificate_view'); }} className="bg-white/10 hover:bg-white/20 text-white border border-white/30 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
+                          <Settings size={18} /> Manage Template
+                        </button>
+                        <button onClick={() => showModal('CREATE_CERTIFICATE', { 
+                           students: db.students,
+                           onSubmit: (sid) => {
+                              handleApproveCertificate(sid);
+                              setCurrentStudentId(sid);
+                              setCurrentView('certificate_view');
+                           }
+                        })} className="bg-white text-[#213568] hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-sm">
+                          <Award size={18} /> Issue Certificate
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 </div>
 
-                {adminTab === 'students' && (
-                  <div className="bg-gray-50 border-b border-gray-200 p-6 flex flex-wrap gap-4 justify-between items-center">
-                    <div className="grid grid-cols-3 gap-4 w-full md:w-auto flex-1">
-                      <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                         <div>
-                           <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Enrolled</p>
-                           <p className="text-2xl font-extrabold text-gray-800">{db.students.length}</p>
-                         </div>
-                         <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><Users size={20} /></div>
-                      </div>
-                      <div className="bg-white border border-green-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                         <div>
-                           <p className="text-[10px] uppercase font-bold text-green-600 tracking-wider">Active (Come More)</p>
-                           <p className="text-2xl font-extrabold text-green-700">{db.students.filter(s => s.status !== 'resigned').length}</p>
-                         </div>
-                         <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><TrendingUp size={20} /></div>
-                      </div>
-                      <div className="bg-white border border-red-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
-                         <div>
-                           <p className="text-[10px] uppercase font-bold text-red-600 tracking-wider">Stopped / Resigned</p>
-                           <p className="text-2xl font-extrabold text-red-700">{db.students.filter(s => s.status === 'resigned').length}</p>
-                         </div>
-                         <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center"><UserX size={20} /></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex border-b border-gray-200 bg-white px-6 pt-2 gap-2 overflow-x-auto">
-                  <button onClick={() => setAdminTab('students')} className={`px-4 py-3 font-bold text-sm whitespace-nowrap ${adminTab === 'students' ? 'text-indigo-600 border-b-4 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Manage Students</button>
-                  <button onClick={() => setAdminTab('users')} className={`px-4 py-3 font-bold text-sm whitespace-nowrap ${adminTab === 'users' ? 'text-indigo-600 border-b-4 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Manage Users</button>
-                  <button onClick={() => setAdminTab('certificates')} className={`px-4 py-3 font-bold text-sm flex items-center gap-1.5 whitespace-nowrap ${adminTab === 'certificates' ? 'text-indigo-600 border-b-4 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                    Manage Certificates
-                    {db.students.filter(s => s.certificateStatus === 'requested').length > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{db.students.filter(s => s.certificateStatus === 'requested').length}</span>
-                    )}
-                  </button>
-                  <button onClick={() => setAdminTab('schedule')} className={`px-4 py-3 font-bold text-sm flex items-center gap-1.5 whitespace-nowrap ${adminTab === 'schedule' ? 'text-indigo-600 border-b-4 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                    <Calendar size={16}/> School Calendar
-                  </button>
-                </div>
-
-                {adminTab === 'students' && (
-                  <div className="flex flex-col min-h-[400px] bg-gray-50/50">
-                    <div className="p-4 border-b border-gray-200 bg-white flex gap-4 items-center">
-                      <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                        <input type="text" placeholder="Search students by name..." value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-50 outline-none text-sm shadow-sm" />
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-6 flex-1">
-                      {(() => {
-                        const filteredStudents = db.students.filter(s => (s.name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()));
-                        const activeFilteredStudents = filteredStudents.filter(s => s.status !== 'resigned');
-                        const archivedStudents = filteredStudents.filter(s => s.status === 'resigned');
-                        const groups = [
-                          { id: 'unassigned', name: 'Pending Assignment', isFolder: false, students: activeFilteredStudents.filter(s => !s.teacherId) },
-                          ...db.users.filter(u => u.role === 'teacher').map(t => ({
-                            id: t.id,
-                            name: `Class of ${t.name}`,
-                            isFolder: true,
-                            students: activeFilteredStudents.filter(s => s.teacherId === t.id)
-                          })),
-                          { id: 'archived', name: 'Archived (Stopped / Resigned)', isFolder: true, isArchive: true, students: archivedStudents }
-                        ];
-                        return groups.map(group => {
-                          if (!group.isFolder && group.students.length === 0) return null;
-                          if (group.isFolder && group.students.length === 0 && (studentSearchQuery !== '' || group.isArchive)) return null;
-                          const isOpen = expandedFolders[group.id] !== false;
-                          const toggleFolder = () => { if (group.isFolder) setExpandedFolders(prev => ({ ...prev, [group.id]: !isOpen })); };
-                          return (
-                            <div key={group.id} className={`bg-white border rounded-xl overflow-hidden shadow-sm ${!group.isFolder ? 'border-orange-200' : 'border-gray-200'} ${group.isArchive ? 'opacity-80' : ''}`}>
-                              {group.isFolder ? (
-                                <div className={`${group.isArchive ? 'bg-gray-100 hover:bg-gray-200' : 'bg-gray-50 hover:bg-gray-100'} p-4 cursor-pointer flex justify-between items-center border-b border-gray-100 transition-colors`} onClick={toggleFolder}>
-                                  <div className="flex items-center gap-3">
-                                    {group.isArchive ? <Archive className="text-gray-500" size={22} /> : <Folder className="text-indigo-500 fill-indigo-100" size={22} />}
-                                    <h3 className={`font-bold ${group.isArchive ? 'text-gray-600' : 'text-gray-800'}`}>{group.name}</h3>
-                                    <span className="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{group.students.length}</span>
-                                  </div>
-                                  {isOpen ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
-                                </div>
-                              ) : (
-                                <div className="bg-orange-50 p-4 flex justify-between items-center border-b border-orange-100">
-                                  <div className="flex items-center gap-3">
-                                    <UserCircle className="text-orange-500" size={22} />
-                                    <h3 className="font-bold text-orange-900">{group.name}</h3>
-                                    <span className="bg-white border border-orange-200 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{group.students.length}</span>
-                                  </div>
-                                </div>
-                              )}
-                              {(!group.isFolder || isOpen) && (
-                                <div className="overflow-x-auto">
-                                  {group.students.length > 0 ? (
-                                    <table className="w-full text-left border-collapse">
-                                      <thead>
-                                        <tr className="bg-white border-b border-gray-100 text-gray-500 uppercase tracking-wider text-xs">
-                                          <th className="p-4 font-semibold w-20 text-center">Photo</th>
-                                          <th className="p-4 font-semibold">Student Name</th>
-                                          <th className="p-4 font-semibold">Reports</th>
-                                          <th className="p-4 font-semibold">Assigned Teacher</th>
-                                          <th className="p-4 font-semibold text-right">Actions</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-gray-100">
-                                        {group.students.map(student => (
-                                          <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
-                                            <td className="p-4">
-                                              <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 group bg-gray-100 mx-auto shadow-sm flex items-center justify-center">
-                                                {student.profileImage ? <img src={student.profileImage} className="w-full h-full object-cover" alt="Student" /> : <UserCircle size={32} className="text-gray-300"/>}
-                                                <input type="file" accept="image/*" onChange={(e) => handleAdminPhotoUpload('student', student.id, e)} className="absolute inset-0 opacity-0 cursor-pointer z-10" title="Upload Photo" />
-                                              </div>
-                                            </td>
-                                            <td className="p-4 font-bold text-gray-800">
-                                              {student.name}
-                                              {student.status === 'resigned' && <span className="ml-2 inline-flex items-center text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold"><UserX size={10} className="mr-1"/> Stopped</span>}
-                                            </td>
-                                            <td className="p-4 text-gray-600">
-                                              <span className="inline-block bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold mr-2">{(student.reports || []).filter(r => r.status === 'completed').length} Comp</span>
-                                              <span className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">{(student.reports || []).filter(r => r.status === 'draft').length} Draft</span>
-                                            </td>
-                                            <td className="p-4">
-                                              <select value={student.teacherId || ''} onChange={(e) => assignStudentToTeacher(student.id, e.target.value)} className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[200px] bg-white">
-                                                <option value="">-- Unassigned --</option>
-                                                {db.users.filter(u => u.role === 'teacher').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                              </select>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                              <button onClick={() => { setCurrentStudentId(student.id); setCurrentView('student_profile'); }} className="text-[#f09e5e] hover:text-orange-600 font-bold text-sm border-2 border-[#f09e5e] px-4 py-1.5 rounded-lg hover:bg-orange-50 transition-colors">View Profile</button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  ) : (
-                                    <div className="p-8 text-center text-gray-500 text-sm italic bg-white">Folder is empty.</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                )}
-
-                {adminTab === 'users' && (
-                  <div className="p-0 overflow-x-auto min-h-[400px]">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs">
-                          <th className="p-4 font-semibold w-20 text-center">Photo</th>
-                          <th className="p-4 font-semibold">User Name</th>
-                          <th className="p-4 font-semibold">Role</th>
-                          <th className="p-4 font-semibold">Login ID</th>
-                          <th className="p-4 font-semibold">Password</th>
-                          <th className="p-4 font-semibold text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {db.users.map(user => (
-                          <tr key={user.id} className={`hover:bg-gray-50/50 transition-colors ${user.role === 'superadmin' ? 'bg-indigo-50/30' : ''}`}>
-                            <td className="p-4">
-                              <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 group bg-gray-100 mx-auto shadow-sm flex items-center justify-center">
-                                 {user.profileImage ? <img src={user.profileImage} className="w-full h-full object-cover" alt="User" /> : <UserCircle size={32} className="text-gray-300"/>}
-                                 <input type="file" accept="image/*" onChange={(e) => handleAdminPhotoUpload('user', user.id, e)} className="absolute inset-0 opacity-0 cursor-pointer z-10" title="Upload Photo" />
-                              </div>
-                            </td>
-                            <td className="p-4 font-bold text-gray-800">{user.name}{user.id === currentUser.id && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase font-bold">You</span>}</td>
-                            <td className="p-4">{user.role === 'superadmin' ? <span className="inline-flex items-center gap-1 text-indigo-700 font-bold text-xs"><ShieldCheck size={14}/> Admin</span> : <span className="inline-flex items-center gap-1 text-gray-600 font-bold text-xs"><Users size={14}/> Teacher</span>}</td>
-                            <td className="p-4"><span className="font-mono text-sm text-indigo-700 font-bold bg-indigo-50 rounded px-2 py-1">{user.username || 'N/A'}</span></td>
-                            <td className="p-4"><span className="font-mono text-sm text-gray-500 bg-gray-100 rounded px-2 py-1">{user.password || 'N/A'}</span></td>
-                            <td className="p-4 text-right flex justify-end gap-2 items-center">
-                              <button onClick={() => showModal('EDIT_PERMISSIONS', { teacher: user, onSubmit: (data) => handleUpdateUserSettings(user.id, data) })} className="text-indigo-500 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-transparent hover:border-indigo-200" title="Settings"><Settings size={18} /></button>
-                              <button onClick={() => confirmRemoveUser(user.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Remove"><Trash2 size={18} /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {adminTab === 'certificates' && (
-                  <div className="p-0 overflow-x-auto min-h-[400px]">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs">
-                          <th className="p-4 font-semibold">Student Name</th>
-                          <th className="p-4 font-semibold">Status</th>
-                          <th className="p-4 font-semibold">Date Requested / Approved</th>
-                          <th className="p-4 font-semibold text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {db.students.filter(s => s.certificateStatus === 'requested' || s.certificateStatus === 'approved').map(student => (
-                          <tr key={student.id} className={`transition-colors ${student.certificateStatus === 'requested' ? 'bg-amber-50/30' : 'hover:bg-gray-50/50'}`}>
-                            <td className="p-4 font-bold text-gray-800">{student.name}</td>
-                            <td className="p-4">{student.certificateStatus === 'requested' ? <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold"><Clock size={12}/> Pending</span> : <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold"><CheckCircle size={12}/> Approved</span>}</td>
-                            <td className="p-4 text-sm text-gray-600">{student.certificateStatus === 'requested' ? student.certificateRequestDate || '-' : student.certificateDate || '-'}</td>
-                            <td className="p-4 text-right flex justify-end gap-2 items-center">
-                              {student.certificateStatus === 'requested' ? <button onClick={() => handleApproveCertificate(student.id)} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow hover:bg-indigo-700 transition-colors">Approve</button> : <button onClick={() => { setCurrentStudentId(student.id); setCurrentView('certificate_view'); }} className="border-2 border-indigo-600 text-indigo-600 px-4 py-1.5 rounded text-sm font-bold shadow-sm hover:bg-indigo-50 transition-colors">View Diploma</button>}
-                              <button onClick={() => handleRevokeCertificate(student.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="Revoke"><Trash2 size={18} /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {adminTab === 'schedule' && (
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-[750px]">
-                    <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
-                      <div>
-                        <h3 className="text-xl font-bold text-[#213568] flex items-center gap-2 mb-1"><Calendar size={22} className="text-indigo-600" /> School Calendar</h3>
-                        <p className="text-sm text-gray-600">Manage school events and classes.</p>
-                      </div>
-                      <div className="flex gap-3 items-center">
-                        <select value={calendarTeacherFilter} onChange={(e) => setCalendarTeacherFilter(e.target.value)} className="border border-gray-300 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-50 bg-white font-semibold text-gray-700 shadow-sm cursor-pointer">
-                          <option value="all">All Teachers</option>
-                          {db.users.filter(u => u.role === 'teacher').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                        <button onClick={() => showModal('EVENT_MODAL', { date: new Date().toISOString().split('T')[0], currentUser, teachers: db.users.filter(u => u.role === 'teacher'), onSave: (evt) => updateDoc(getPublicDoc('events', evt.id), evt) })} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-colors"><Plus size={18}/> New Event</button>
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col p-4 relative">
-                      {db.adminCalendarUrl ? (
-                        <div className="absolute inset-0 z-50 bg-white">
-                          <div className="bg-indigo-50 border-b border-indigo-200 p-2 flex justify-between text-xs px-4"><span className="text-indigo-800 font-medium">Viewing External Calendar.</span><button onClick={() => setDoc(getPublicDoc('settings', 'global'), { adminCalendarUrl: '' }, { merge: true })} className="text-indigo-600 font-bold hover:underline">Unlink</button></div>
-                          <iframe src={db.adminCalendarUrl} style={{ border: 0 }} width="100%" height="100%" frameBorder="0" scrolling="no" title="Schedule"></iframe>
-                        </div>
-                      ) : (
-                        <NativeCalendar />
+                <div className="flex flex-col md:flex-row flex-1 min-h-[600px]">
+                  {/* SIDEBAR NAVIGATION */}
+                  <div className="w-full md:w-64 shrink-0 bg-gray-50 border-r border-gray-200 p-4 flex flex-col gap-2">
+                    <button onClick={() => setAdminTab('students')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'students' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
+                      <span className="flex items-center gap-3"><Users size={18}/> {t('manage_students')}</span>
+                    </button>
+                    <button onClick={() => setAdminTab('users')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'users' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
+                      <span className="flex items-center gap-3"><ShieldCheck size={18}/> {t('manage_users')}</span>
+                    </button>
+                    <button onClick={() => setAdminTab('certificates')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'certificates' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
+                      <span className="flex items-center gap-3"><Award size={18}/> {t('manage_certificates')}</span>
+                      {db.students.filter(s => s.certificateStatus === 'requested').length > 0 && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${adminTab === 'certificates' ? 'bg-white text-indigo-600' : 'bg-red-500 text-white'}`}>{db.students.filter(s => s.certificateStatus === 'requested').length}</span>
                       )}
-                    </div>
+                    </button>
+                    <button onClick={() => setAdminTab('schedule')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'schedule' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
+                      <span className="flex items-center gap-3"><Calendar size={18}/> {t('school_calendar')}</span>
+                    </button>
+                    <button onClick={() => setAdminTab('courses')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'courses' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
+                      <span className="flex items-center gap-3"><ClipboardList size={18}/> {t('manage_courses')}</span>
+                    </button>
                   </div>
-                )}
+
+                  {/* MAIN CONTENT AREA */}
+                  <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+                    {adminTab === 'students' && (
+                      <div className="flex flex-col h-full">
+                        <div className="bg-gray-50 border-b border-gray-200 p-6 flex flex-wrap gap-4 justify-between items-center shrink-0">
+                          <div className="grid grid-cols-3 gap-4 w-full md:w-auto flex-1">
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                               <div>
+                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">{t('total_enrolled')}</p>
+                                 <p className="text-2xl font-extrabold text-gray-800">{db.students.length}</p>
+                               </div>
+                               <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><Users size={20} /></div>
+                            </div>
+                            <div className="bg-white border border-green-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                               <div>
+                                 <p className="text-[10px] uppercase font-bold text-green-600 tracking-wider">{t('active_students')}</p>
+                                 <p className="text-2xl font-extrabold text-green-700">{db.students.filter(s => s.status !== 'resigned').length}</p>
+                               </div>
+                               <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><TrendingUp size={20} /></div>
+                            </div>
+                            <div className="bg-white border border-red-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                               <div>
+                                 <p className="text-[10px] uppercase font-bold text-red-600 tracking-wider">{t('stopped_resigned')}</p>
+                                 <p className="text-2xl font-extrabold text-red-700">{db.students.filter(s => s.status === 'resigned').length}</p>
+                               </div>
+                               <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center"><UserX size={20} /></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col flex-1 bg-gray-50/50">
+                          <div className="p-4 border-b border-gray-200 bg-white flex gap-4 items-center shrink-0">
+                            <div className="relative flex-1 max-w-md">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                              <input type="text" placeholder={t('search_students')} value={studentSearchQuery} onChange={e => setStudentSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-50 outline-none text-sm shadow-sm" />
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                            {(() => {
+                              const filteredStudents = db.students.filter(s => (s.name || '').toLowerCase().includes(studentSearchQuery.toLowerCase()));
+                              const activeFilteredStudents = filteredStudents.filter(s => s.status !== 'resigned');
+                              const archivedStudents = filteredStudents.filter(s => s.status === 'resigned');
+                              const groups = [
+                                { id: 'unassigned', name: 'Pending Assignment', isFolder: false, students: activeFilteredStudents.filter(s => !s.teacherId) },
+                                ...db.users.filter(u => u.role === 'teacher').map(t => ({
+                                  id: t.id,
+                                  name: `Class of ${t.name}`,
+                                  isFolder: true,
+                                  students: activeFilteredStudents.filter(s => s.teacherId === t.id)
+                                })),
+                                { id: 'archived', name: 'Archived (Stopped / Resigned)', isFolder: true, isArchive: true, students: archivedStudents }
+                              ];
+                              return groups.map(group => {
+                                if (!group.isFolder && group.students.length === 0) return null;
+                                if (group.isFolder && group.students.length === 0 && (studentSearchQuery !== '' || group.isArchive)) return null;
+                                const isOpen = expandedFolders[group.id] !== false;
+                                const toggleFolder = () => { if (group.isFolder) setExpandedFolders(prev => ({ ...prev, [group.id]: !isOpen })); };
+                                return (
+                                  <div key={group.id} className={`bg-white border rounded-xl overflow-hidden shadow-sm ${!group.isFolder ? 'border-orange-200' : 'border-gray-200'} ${group.isArchive ? 'opacity-80' : ''}`}>
+                                    {group.isFolder ? (
+                                      <div className={`${group.isArchive ? 'bg-gray-100 hover:bg-gray-200' : 'bg-gray-50 hover:bg-gray-100'} p-4 cursor-pointer flex justify-between items-center border-b border-gray-100 transition-colors`} onClick={toggleFolder}>
+                                        <div className="flex items-center gap-3">
+                                          {group.isArchive ? <Archive className="text-gray-500" size={22} /> : <Folder className="text-indigo-500 fill-indigo-100" size={22} />}
+                                          <h3 className={`font-bold ${group.isArchive ? 'text-gray-600' : 'text-gray-800'}`}>{group.name}</h3>
+                                          <span className="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{group.students.length}</span>
+                                        </div>
+                                        {isOpen ? <ChevronDown size={20} className="text-gray-500" /> : <ChevronRight size={20} className="text-gray-500" />}
+                                      </div>
+                                    ) : (
+                                      <div className="bg-orange-50 p-4 flex justify-between items-center border-b border-orange-100">
+                                        <div className="flex items-center gap-3">
+                                          <UserCircle className="text-orange-500" size={22} />
+                                          <h3 className="font-bold text-orange-900">{group.name}</h3>
+                                          <span className="bg-white border border-orange-200 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{group.students.length}</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {(!group.isFolder || isOpen) && (
+                                      <div className="overflow-x-auto">
+                                        {group.students.length > 0 ? (
+                                          <table className="w-full text-left border-collapse">
+                                            <thead>
+                                              <tr className="bg-white border-b border-gray-100 text-gray-500 uppercase tracking-wider text-xs">
+                                                <th className="p-4 font-semibold w-20 text-center">Photo</th>
+                                                <th className="p-4 font-semibold">Student Name</th>
+                                                <th className="p-4 font-semibold">Reports</th>
+                                                <th className="p-4 font-semibold">Assigned Teacher</th>
+                                                <th className="p-4 font-semibold text-right">Actions</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                              {group.students.map(student => (
+                                                <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
+                                                  <td className="p-4">
+                                                    <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 group bg-gray-100 mx-auto shadow-sm flex items-center justify-center">
+                                                      {student.profileImage ? <img src={student.profileImage} className="w-full h-full object-cover" alt="Student" /> : <UserCircle size={32} className="text-gray-300"/>}
+                                                      <input type="file" accept="image/*" onChange={(e) => handleAdminPhotoUpload('student', student.id, e)} className="absolute inset-0 opacity-0 cursor-pointer z-10" title="Upload Photo" />
+                                                    </div>
+                                                  </td>
+                                                  <td className="p-4 font-bold text-gray-800">
+                                                    {student.name}
+                                                    {student.status === 'resigned' && <span className="ml-2 inline-flex items-center text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold"><UserX size={10} className="mr-1"/> Stopped</span>}
+                                                  </td>
+                                                  <td className="p-4 text-gray-600">
+                                                    <span className="inline-block bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold mr-2">{(student.reports || []).filter(r => r.status === 'completed').length} Comp</span>
+                                                    <span className="inline-block bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">{(student.reports || []).filter(r => r.status === 'draft').length} Draft</span>
+                                                  </td>
+                                                  <td className="p-4">
+                                                    <select value={student.teacherId || ''} onChange={(e) => assignStudentToTeacher(student.id, e.target.value)} className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none w-full max-w-[200px] bg-white">
+                                                      <option value="">-- Unassigned --</option>
+                                                      {db.users.filter(u => u.role === 'teacher').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                    </select>
+                                                  </td>
+                                                  <td className="p-4 text-right">
+                                                    <button onClick={() => { setCurrentStudentId(student.id); setCurrentView('student_profile'); }} className="text-[#f09e5e] hover:text-orange-600 font-bold text-sm border-2 border-[#f09e5e] px-4 py-1.5 rounded-lg hover:bg-orange-50 transition-colors">View Profile</button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        ) : (
+                                          <div className="p-8 text-center text-gray-500 text-sm italic bg-white">Folder is empty.</div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {adminTab === 'users' && (
+                      <div className="p-0 overflow-y-auto flex-1">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs z-10">
+                            <tr>
+                              <th className="p-4 font-semibold w-20 text-center">Photo</th>
+                              <th className="p-4 font-semibold">User Name</th>
+                              <th className="p-4 font-semibold">Role</th>
+                              <th className="p-4 font-semibold">Login ID</th>
+                              <th className="p-4 font-semibold">Password</th>
+                              <th className="p-4 font-semibold text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {db.users.map(user => (
+                              <tr key={user.id} className={`hover:bg-gray-50/50 transition-colors ${user.role === 'superadmin' ? 'bg-indigo-50/30' : ''}`}>
+                                <td className="p-4">
+                                  <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 group bg-gray-100 mx-auto shadow-sm flex items-center justify-center">
+                                     {user.profileImage ? <img src={user.profileImage} className="w-full h-full object-cover" alt="User" /> : <UserCircle size={32} className="text-gray-300"/>}
+                                     <input type="file" accept="image/*" onChange={(e) => handleAdminPhotoUpload('user', user.id, e)} className="absolute inset-0 opacity-0 cursor-pointer z-10" title="Upload Photo" />
+                                  </div>
+                                </td>
+                                <td className="p-4 font-bold text-gray-800">{user.name}{user.id === currentUser.id && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase font-bold">You</span>}</td>
+                                <td className="p-4">
+                                  {user.role === 'superadmin' ? <span className="inline-flex items-center gap-1 text-indigo-700 font-bold text-xs"><ShieldCheck size={14}/> Admin</span> : 
+                                   user.role === 'teacher' ? <span className="inline-flex items-center gap-1 text-gray-600 font-bold text-xs"><Users size={14}/> Teacher</span> :
+                                   <span className="inline-flex items-center gap-1 text-blue-600 font-bold text-xs"><GraduationCap size={14}/> Student</span>}
+                                  {user.role === 'student' && !db.students.find(s => s.id === user.studentId) && <div className="text-[10px] text-red-600 mt-1 font-bold">⚠ Unlinked Profile</div>}
+                                </td>
+                                <td className="p-4"><span className="font-mono text-sm text-indigo-700 font-bold bg-indigo-50 rounded px-2 py-1">{user.username || 'N/A'}</span></td>
+                                <td className="p-4"><span className="font-mono text-sm text-gray-500 bg-gray-100 rounded px-2 py-1">{user.password || 'N/A'}</span></td>
+                                <td className="p-4 text-right flex justify-end gap-2 items-center">
+                                  <button onClick={() => showModal('USER_SETTINGS', { user: user, onSubmit: (data) => updateDoc(getPublicDoc('users', user.id), data) })} className="text-indigo-500 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-transparent hover:border-indigo-200" title="Settings"><Settings size={18} /></button>
+                                  <button onClick={() => confirmRemoveUser(user.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Remove"><Trash2 size={18} /></button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {adminTab === 'certificates' && (
+                      <div className="p-0 overflow-y-auto flex-1">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0 bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs z-10">
+                            <tr>
+                              <th className="p-4 font-semibold">Student Name</th>
+                              <th className="p-4 font-semibold">Status</th>
+                              <th className="p-4 font-semibold">Date Requested / Approved</th>
+                              <th className="p-4 font-semibold text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {db.students.filter(s => s.certificateStatus === 'requested' || s.certificateStatus === 'approved').map(student => (
+                              <tr key={student.id} className={`transition-colors ${student.certificateStatus === 'requested' ? 'bg-amber-50/30' : 'hover:bg-gray-50/50'}`}>
+                                <td className="p-4 font-bold text-gray-800">{student.name}</td>
+                                <td className="p-4">{student.certificateStatus === 'requested' ? <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold"><Clock size={12}/> Pending</span> : <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold"><CheckCircle size={12}/> Approved</span>}</td>
+                                <td className="p-4 text-sm text-gray-600">{student.certificateStatus === 'requested' ? student.certificateRequestDate || '-' : student.certificateDate || '-'}</td>
+                                <td className="p-4 text-right flex justify-end gap-2 items-center">
+                                  {student.certificateStatus === 'requested' ? <button onClick={() => handleApproveCertificate(student.id)} className="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow hover:bg-indigo-700 transition-colors">Approve</button> : <button onClick={() => { setCurrentStudentId(student.id); setCurrentView('certificate_view'); }} className="border-2 border-indigo-600 text-indigo-600 px-4 py-1.5 rounded text-sm font-bold shadow-sm hover:bg-indigo-50 transition-colors">View Diploma</button>}
+                                  <button onClick={() => handleRevokeCertificate(student.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="Revoke"><Trash2 size={18} /></button>
+                                </td>
+                              </tr>
+                            ))}
+                            {db.students.filter(s => s.certificateStatus === 'requested' || s.certificateStatus === 'approved').length === 0 && (
+                              <tr><td colSpan="4" className="p-12 text-center text-gray-500 italic bg-white">No certificates requested or issued yet.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {adminTab === 'schedule' && (
+                      <div className="flex flex-col flex-1 min-h-[750px] bg-white h-full">
+                        <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+                          <div>
+                            <h3 className="text-xl font-bold text-[#213568] flex items-center gap-2 mb-1"><Calendar size={22} className="text-indigo-600" /> {t('school_calendar')}</h3>
+                            <p className="text-sm text-gray-600">Manage school events and classes.</p>
+                          </div>
+                          <div className="flex gap-3 items-center">
+                            <select value={calendarTeacherFilter} onChange={(e) => setCalendarTeacherFilter(e.target.value)} className="border border-gray-300 rounded-lg text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-50 bg-white font-semibold text-gray-700 shadow-sm cursor-pointer">
+                              <option value="all">All Teachers</option>
+                              {db.users.filter(u => u.role === 'teacher').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                            <button onClick={() => showModal('EVENT_MODAL', { date: new Date().toISOString().split('T')[0], currentUser, teachers: db.users.filter(u => u.role === 'teacher'), onSave: (evt) => setDoc(getPublicDoc('events', evt.id), evt) })} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-colors"><Plus size={18}/> New Event</button>
+                          </div>
+                        </div>
+                        <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col p-4 relative">
+                          {db.adminCalendarUrl ? (
+                            <div className="absolute inset-0 z-50 bg-white">
+                              <div className="bg-indigo-50 border-b border-indigo-200 p-2 flex justify-between text-xs px-4"><span className="text-indigo-800 font-medium">Viewing External Calendar.</span><button onClick={() => setDoc(getPublicDoc('settings', 'global'), { adminCalendarUrl: '' }, { merge: true })} className="text-indigo-600 font-bold hover:underline">Unlink</button></div>
+                              <iframe src={db.adminCalendarUrl} style={{ border: 0 }} width="100%" height="100%" frameBorder="0" scrolling="no" title="Schedule"></iframe>
+                            </div>
+                          ) : (
+                            <NativeCalendar events={adminFilteredCalEvents} />
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {adminTab === 'courses' && (
+                      <div className="flex flex-col flex-1 bg-gray-50/50 p-6 overflow-y-auto">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><ClipboardList size={20} className="text-indigo-600"/> Add New Course</h3>
+                          <div className="flex flex-wrap gap-3">
+                            <input 
+                              type="text" 
+                              value={newCourseName} 
+                              onChange={e => setNewCourseName(e.target.value)} 
+                              placeholder="Enter course name (e.g. Reading G.1)" 
+                              className="flex-1 border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm min-w-[200px]" 
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCourse(); } }}
+                            />
+                            <button onClick={handleAddCourse} disabled={!newCourseName.trim()} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2">
+                              <Plus size={18} /> {t('add_course')}
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-xs">
+                                <th className="p-4 font-semibold w-16 text-center">#</th>
+                                <th className="p-4 font-semibold">{t('course_name')}</th>
+                                <th className="p-4 font-semibold text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {(db.courses || DEFAULT_COURSES).map((course, index) => (
+                                <tr key={course.id} className="hover:bg-gray-50 transition-colors">
+                                  <td className="p-4 text-center text-gray-400 font-bold">{index + 1}</td>
+                                  <td className="p-4 font-bold text-gray-800">{course.name}</td>
+                                  <td className="p-4 text-right">
+                                    <button onClick={() => handleDeleteCourse(course.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Remove Course">
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -3146,11 +5627,12 @@ function App() {
                     <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 flex items-center justify-center shrink-0">
                        {currentUser.profileImage ? <img src={currentUser.profileImage} className="w-full h-full object-cover" alt="Teacher"/> : <UserCircle size={48} className="text-gray-300"/>}
                     </div>
-                    <h2 className="text-3xl font-extrabold text-[#213568]">Welcome, {currentUser.name}</h2>
+                    <h2 className="text-3xl font-extrabold text-[#213568]">{t('welcome')}, {currentUser.name}</h2>
                   </div>
-                  <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1.5 w-full md:w-auto">
-                    <button onClick={() => setTeacherTab('students')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${teacherTab === 'students' ? 'bg-[#f09e5e] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Users size={18} /> My Students</button>
-                    <button onClick={() => setTeacherTab('schedule')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${teacherTab === 'schedule' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Calendar size={18} /> My Schedule</button>
+                  <div className="flex flex-wrap bg-white rounded-xl shadow-sm border border-gray-200 p-1.5 w-full md:w-auto">
+                    <button onClick={() => setTeacherTab('students')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${teacherTab === 'students' ? 'bg-[#f09e5e] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Users size={18} /> {t('my_students')}</button>
+                    <button onClick={() => setTeacherTab('schedule')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${teacherTab === 'schedule' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Calendar size={18} /> {t('my_schedule')}</button>
+                    <button onClick={() => setTeacherTab('reports')} className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${teacherTab === 'reports' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><FileText size={18} /> {t('my_reports')}</button>
                   </div>
                 </div>
                 {(() => {
@@ -3162,20 +5644,89 @@ function App() {
                   const allTimeHours = myAssignedStudents.reduce((total, student) => total + (student.attendance || []).reduce((sum, record) => (record.status === 'present' || record.status === 'makeup') ? sum + (Number(record.hours) || 0) : sum, 0), 0);
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden"><div className="absolute -right-4 -top-4 text-indigo-50 opacity-50"><Users size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Active Students</span><span className="text-3xl font-extrabold text-indigo-600 relative z-10">{myActiveStudents.length}</span>{stoppedCount > 0 && <span className="text-[10px] text-gray-400 font-semibold mt-1 bg-gray-50 px-2 py-0.5 rounded-full">+ {stoppedCount} Stopped</span>}</div>
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden"><div className="absolute -right-4 -top-4 text-green-50 opacity-50"><Clock size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Hours This Month</span><span className="text-3xl font-extrabold text-green-600 relative z-10">{thisMonthHours}</span></div>
-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden col-span-2 md:col-span-1"><div className="absolute -right-4 -top-4 text-blue-50 opacity-50"><Award size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">Total Hours</span><span className="text-3xl font-extrabold text-blue-600 relative z-10">{allTimeHours}</span></div>
+                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden"><div className="absolute -right-4 -top-4 text-indigo-50 opacity-50"><Users size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('active_students')}</span><span className="text-3xl font-extrabold text-indigo-600 relative z-10">{myActiveStudents.length}</span>{stoppedCount > 0 && <span className="text-[10px] text-gray-400 font-semibold mt-1 bg-gray-50 px-2 py-0.5 rounded-full">+ {stoppedCount} Stopped</span>}</div>
+                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden"><div className="absolute -right-4 -top-4 text-green-50 opacity-50"><Clock size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('hours_this_month')}</span><span className="text-3xl font-extrabold text-green-600 relative z-10">{thisMonthHours}</span></div>
+                      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col items-center justify-center relative overflow-hidden col-span-2 md:col-span-1"><div className="absolute -right-4 -top-4 text-blue-50 opacity-50"><Award size={80}/></div><span className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('total_hours')}</span><span className="text-3xl font-extrabold text-blue-600 relative z-10">{allTimeHours}</span></div>
                     </div>
                   );
                 })()}
                 {teacherTab === 'students' ? (
                   <>
-                    <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2"><Users className="text-[#f09e5e]" size={24} /> My Students</h3>
+                    {(() => {
+                      const todayDayOfWeek = new Date().getDay();
+                      const todaysClasses = [];
+                      const myActiveStudentsForToday = db.students.filter(s => s.teacherId === currentUser.id && s.status !== 'resigned');
+                      
+                      myActiveStudentsForToday.forEach(student => {
+                          const todaySched = (student.structuredSchedule || []).find(s => s.dayOfWeek === todayDayOfWeek);
+                          if (todaySched) {
+                              let courseString = 'Phonics';
+                              const completedReports = (student.reports || []).filter(r => r.status === 'completed');
+                              if (completedReports.length > 0) {
+                                  courseString = `${completedReports[completedReports.length - 1].data.schoolCourse} ${completedReports[completedReports.length - 1].data.level}`;
+                              }
+                              todaysClasses.push({
+                                  student,
+                                  course: courseString,
+                                  time: `${todaySched.startTime} - ${todaySched.endTime}`,
+                                  startTime: todaySched.startTime
+                              });
+                          }
+                      });
+                      todaysClasses.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+                      return (
+                        <div className="mb-12">
+                          <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2"><Clock className="text-indigo-600" size={24} /> {t('todays_classes')}</h3>
+                          {todaysClasses.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {todaysClasses.map((cls, idx) => (
+                                 <div key={idx} className="bg-white border border-indigo-100 p-5 rounded-xl shadow-sm flex flex-col hover:border-indigo-300 transition-colors">
+                                    <div className="flex justify-between items-start mb-2">
+                                       <h4 className="font-bold text-gray-900 cursor-pointer hover:underline" onClick={() => { setCurrentStudentId(cls.student.id); setCurrentView('student_profile'); }}>{cls.student.name}</h4>
+                                       <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2 py-1 rounded shrink-0 ml-2">{cls.time}</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mb-4">{cls.course}</p>
+                                    <button onClick={() => showModal('LESSON_REPORT_MODAL', { student: cls.student, course: cls.course, currentUser, onSubmit: (reportData) => setDoc(getPublicDoc('lesson_reports', reportData.id), reportData) })} className="mt-auto w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-sm">{t('write_report')}</button>
+                                 </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-500 italic">{t('no_classes_today')}</div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <h3 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2"><Users className="text-[#f09e5e]" size={24} /> {t('my_students')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {db.students.filter(s => s.teacherId === currentUser.id && s.status !== 'resigned').map(student => (
                         <div key={student.id} className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden flex flex-col cursor-pointer group" onClick={() => { setCurrentStudentId(student.id); setCurrentView('student_profile'); }}>
                           <div className="h-24 bg-gradient-to-r from-indigo-50 to-blue-50 relative border-b border-gray-100 flex justify-end p-4">{student.certificateStatus === 'approved' && <Award size={32} className="text-yellow-500" />}<div className="absolute -bottom-8 left-6 w-16 h-16 rounded-full border-4 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center">{student.profileImage ? <img src={student.profileImage} className="w-full h-full object-cover" /> : <UserCircle size={40} className="text-gray-300" />}</div></div>
-                          <div className="pt-10 px-6 pb-6 flex-1 flex flex-col"><h3 className="text-lg font-bold text-gray-800 line-clamp-1">{student.name}</h3><p className="text-sm text-gray-500 mt-1">{(student.reports || []).filter(r => r.status === 'completed').length}/5 Levels</p><div className="mt-auto pt-6 flex gap-2"><button className="flex-1 bg-indigo-50 text-indigo-700 py-2 rounded-lg text-sm font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">Profile</button></div></div>
+                          <div className="pt-10 px-6 pb-6 flex-1 flex flex-col">
+                            <h3 className="text-lg font-bold text-gray-800 line-clamp-1">{student.name}</h3>
+                            <p className="text-sm text-gray-500 mt-1">{(student.reports || []).filter(r => r.status === 'completed').length}/5 Levels</p>
+                            <div className="mt-auto pt-6 flex gap-2">
+                              <button className="flex-1 bg-indigo-50 text-indigo-700 py-2 rounded-lg text-sm font-bold hover:bg-indigo-100 transition-colors">Profile</button>
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                let courseString = '';
+                                const completedReports = (student.reports || []).filter(r => r.status === 'completed');
+                                if (completedReports.length > 0) {
+                                    courseString = `${completedReports[completedReports.length - 1].data.schoolCourse} ${completedReports[completedReports.length - 1].data.level}`;
+                                }
+                                showModal('LESSON_REPORT_MODAL', { 
+                                  student, 
+                                  course: courseString,
+                                  courses: db.courses || DEFAULT_COURSES,
+                                  currentUser, 
+                                  onSubmit: (reportData) => setDoc(getPublicDoc('lesson_reports', reportData.id), reportData) 
+                                });
+                              }} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm">
+                                Write Report
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -3193,50 +5744,87 @@ function App() {
                       </div>
                     )}
                   </>
-                ) : (
+                ) : teacherTab === 'schedule' ? (
                   <div className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden flex flex-col h-[750px]">
-                    <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0"><div><h3 className="text-xl font-bold text-[#213568] flex items-center gap-2 mb-1"><Calendar size={22} className="text-indigo-600" /> My Schedule</h3></div>{!currentUser.calendarUrl && <button onClick={() => showModal('EVENT_MODAL', { date: new Date().toISOString().split('T')[0], currentUser, teachers: db.users.filter(u => u.role === 'teacher'), onSave: (e) => setDoc(getPublicDoc('events', e.id), e) })} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-colors"><Plus size={18}/> Add Class</button>}</div>
-                    <div className="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col relative">{currentUser.calendarUrl ? <iframe src={currentUser.calendarUrl} style={{ border: 0 }} width="100%" height="90%" frameBorder="0" scrolling="no" className="rounded-xl shadow-sm border border-gray-300" title="Schedule"></iframe> : <NativeCalendar />}</div>
+                    <div className="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+                      <div><h3 className="text-xl font-bold text-[#213568] flex items-center gap-2 mb-1"><Calendar size={22} className="text-indigo-600" /> {t('my_schedule')}</h3></div>
+                    </div>
+                    <div className="flex-1 bg-gray-50 p-4 overflow-hidden flex flex-col relative">{currentUser.calendarUrl ? <iframe src={currentUser.calendarUrl} style={{ border: 0 }} width="100%" height="90%" frameBorder="0" scrolling="no" className="rounded-xl shadow-sm border border-gray-300" title="Schedule"></iframe> : <NativeCalendar events={allCalendarEvents.filter(e => e.type === 'global' || e.teacherId === currentUser.id)} />}</div>
                   </div>
+                ) : (
+                  <TeacherReportsPage currentUser={currentUser} reports={db.lessonReports} students={db.students} showModal={showModal} />
                 )}
               </div>
             )}
 
             {currentView === 'student_profile' && db.students.find(s => s.id === currentStudentId) && (
               <div className="w-full max-w-5xl">
-                <div className="bg-white rounded-2xl shadow-md p-8 mb-8 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-6"><div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-[5px] border-indigo-50 shadow-sm relative">{db.students.find(s => s.id === currentStudentId).profileImage ? <img src={db.students.find(s => s.id === currentStudentId).profileImage} className="w-full h-full object-cover" /> : <UserCircle size={48} className="text-gray-300" />}</div><div><h2 className="text-3xl font-extrabold text-[#213568] flex items-center gap-3">{db.students.find(s => s.id === currentStudentId).name}{db.students.find(s => s.id === currentStudentId).certificateStatus === 'approved' && <Award size={28} className="text-yellow-500" />}</h2><p className="text-gray-500 flex items-center gap-2 mt-1 font-medium"><Users size={18} /> Student History Profile</p></div></div>
-                  <div className="flex gap-3">
-                    {currentUser.role === 'superadmin' && (
-                      <>
-                        <button onClick={() => setCurrentView('attendance_summary')} className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all text-sm border border-blue-100"><Activity size={18} /> Attendance Summary</button>
-                        <button onClick={() => setCurrentView('advanced_summary')} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all text-sm border border-indigo-100"><ClipboardList size={18} /> Advanced Summary</button>
-                      </>
-                    )}
-                    {checkPerm(currentUser, 'canEditReports') && (<><button onClick={() => createNewReport(currentStudentId, 'PHONICS')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-md transition-all text-sm"><Plus size={18} /> New Phonics</button><button onClick={() => createNewReport(currentStudentId, 'SPELLING')} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 rounded-xl font-bold flex items-center gap-2 shadow-md transition-all text-sm"><Plus size={18} /> New Spelling</button></>)}
+                <div className="bg-white rounded-2xl shadow-md p-8 mb-8 border border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-[5px] border-indigo-50 shadow-sm relative">
+                      {db.students.find(s => s.id === currentStudentId).profileImage ? (
+                        <img src={db.students.find(s => s.id === currentStudentId).profileImage} className="w-full h-full object-cover" alt="Student" />
+                      ) : (
+                        <UserCircle size={48} className="text-gray-300" />
+                      )}
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-extrabold text-[#213568] flex items-center gap-3">
+                        {db.students.find(s => s.id === currentStudentId).name}
+                        {db.students.find(s => s.id === currentStudentId).certificateStatus === 'approved' && (
+                          <Award size={28} className="text-yellow-500 drop-shadow" title="Certified" />
+                        )}
+                      </h2>
+                    </div>
                   </div>
+                  {currentUser.role !== 'teacher' && (
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <button onClick={() => setCurrentView('student_payments')} className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-emerald-100 hover:bg-emerald-100 transition-colors"><CreditCard size={18} /> {t('payments_billing')}</button>
+                      <button onClick={() => setCurrentView('attendance_summary')} className="bg-blue-50 text-blue-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-blue-100 hover:bg-blue-100 transition-colors"><Activity size={18} /> {t('attendance_summary')}</button>
+                      <button onClick={() => setCurrentView('advanced_summary')} className="bg-indigo-50 text-indigo-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-indigo-100 hover:bg-indigo-100 transition-colors"><ClipboardList size={18} /> {t('advanced_summary')}</button>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                   <div className="lg:col-span-1">
-                    <div className="sticky top-24 space-y-6">
-                      <StudentInfoCard 
+                    <StudentInfoCard 
+                      student={db.students.find(s => s.id === currentStudentId)} 
+                      onSave={(newData) => handleUpdateStudentInfo(currentStudentId, newData)} 
+                      canEdit={checkPerm(currentUser, 'canEditStudentInfo')} 
+                      canViewPhone={checkPerm(currentUser, 'canViewPhone')} 
+                      canViewEmail={checkPerm(currentUser, 'canViewEmail')} 
+                      canViewLineId={checkPerm(currentUser, 'canViewLineId')} 
+                      canViewNotes={checkPerm(currentUser, 'canViewNotes')} 
+                      canViewPrivateCustom={checkPerm(currentUser, 'canViewPrivateCustomInfo')} 
+                    />
+                    {db.students.find(s => s.id === currentStudentId).certificateStatus === 'approved' && (
+                      <div className="bg-gradient-to-b from-white to-yellow-50 rounded-xl shadow-sm border border-yellow-200 p-6 mt-6 text-center">
+                        <Award size={40} className="mx-auto text-yellow-500 mb-3 drop-shadow-sm" />
+                        <h3 className="text-sm font-extrabold text-yellow-900 mb-1 uppercase tracking-wider">Official Certificate</h3>
+                        <p className="text-xs text-yellow-700 mb-4 font-medium">Issued: {db.students.find(s => s.id === currentStudentId).certificateDate || '-'}</p>
+                        <button onClick={() => setCurrentView('certificate_view')} className="w-full bg-white border-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
+                          <Award size={16} /> View Diploma
+                        </button>
+                      </div>
+                    )}
+                    {currentUser.role === 'superadmin' && (
+                      <StudentLoginManager 
                         student={db.students.find(s => s.id === currentStudentId)} 
-                        onSave={(newData) => handleUpdateStudentInfo(currentStudentId, newData)} 
-                        canEdit={checkPerm(currentUser, 'canEditStudentInfo')} 
-                        canViewPhone={checkPerm(currentUser, 'canViewPhone')} 
-                        canViewEmail={checkPerm(currentUser, 'canViewEmail')} 
-                        canViewLineId={checkPerm(currentUser, 'canViewLineId')} 
-                        canViewNotes={checkPerm(currentUser, 'canViewNotes')} 
-                        canViewPrivateCustom={checkPerm(currentUser, 'canViewPrivateCustomInfo')} 
+                        users={db.users} 
+                        onSaveUser={(userData) => setDoc(getPublicDoc('users', userData.id), userData, {merge: true})}
+                        onDeleteUser={(userId) => deleteDoc(getPublicDoc('users', userId))}
+                        showModal={showModal}
                       />
-                    </div>
+                    )}
                   </div>
                   <div className="lg:col-span-3 space-y-8">
-                    <StudentAttendance student={db.students.find(s => s.id === currentStudentId)} onUpdate={(newData) => handleUpdateStudentInfo(currentStudentId, newData)} canEdit={checkPerm(currentUser, 'canManageAttendance')} showModal={showModal} currentUser={currentUser} />
+                    {currentUser.role !== 'teacher' && (
+                      <StudentAttendance student={db.students.find(s => s.id === currentStudentId)} onUpdate={(newData) => handleUpdateStudentInfo(currentStudentId, newData)} canEdit={checkPerm(currentUser, 'canManageAttendance')} showModal={showModal} currentUser={currentUser} />
+                    )}
                     
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                       <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
-                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><FileText className="text-[#f09e5e]" size={24}/> Student Reports</h3>
+                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><FileText className="text-[#f09e5e]" size={24}/> Grade Results</h3>
                         {(() => {
                           const student = db.students.find(s => s.id === currentStudentId);
                           const completedPhonicsLevels = (student.reports || [])
@@ -3265,6 +5853,11 @@ function App() {
                           }
                           return null;
                         })()}
+                        {checkPerm(currentUser, 'canEditReports') && (
+                           <button onClick={() => createNewReport(currentStudentId)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow flex items-center gap-2 transition-colors ml-2">
+                             <Plus size={16} /> New Report
+                           </button>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                          {(db.students.find(s => s.id === currentStudentId).reports || []).map(report => {
@@ -3303,10 +5896,15 @@ function App() {
                          )}
                       </div>
                     </div>
+
+                    <StudentLessonReportsList student={db.students.find(s => s.id === currentStudentId)} reports={db.lessonReports || []} teachers={db.users} showModal={showModal} />
+
                   </div>
                 </div>
               </div>
             )}
+
+            {currentView === 'student_payments' && currentStudentId && (<StudentPayments student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView('student_profile')} />)}
 
             {currentView === 'edit_report' && currentStudentId && currentReportId && (() => {
               const student = db.students.find(s => s.id === currentStudentId);
@@ -3334,29 +5932,31 @@ function App() {
               const student = db.students.find(s => s.id === currentStudentId);
               const report = student?.reports.find(r => r.id === currentReportId);
               if (!report) return null;
-
+              
               return (
                 <FinalReportView 
                   data={draftReport || report.data} 
-                  onImageUpload={(e) => handleFileUpload('profileImage', e)} 
-                  onRemoveImage={handleRemoveProfileImage} 
-                  onLogoUpload={(e) => handleFileUpload('logo', e)} 
-                  onSignatureUpload={(e) => handleFileUpload('signatureImage', e)} 
+                  onImageUpload={(e) => handleFileUpload('profileImage', e)}
+                  onRemoveImage={handleRemoveProfileImage}
+                  onLogoUpload={(e) => handleFileUpload('logo', e)}
+                  onSignatureUpload={(e) => handleFileUpload('signatureImage', e)}
                   canEdit={checkPerm(currentUser, 'canEditReports')} 
                 />
               );
             })()}
 
-            {currentView === 'certificate_view' && currentStudentId && (<CertificateView student={db.students.find(s => s.id === currentStudentId)} template={db.certificateTemplate} settings={db.certificateSettings || defaultCertSettings} onUploadTemplate={handleCertTemplateUpload} onUpdateSettings={handleUpdateCertSettings} canEdit={currentUser.role === 'superadmin' || checkPerm(currentUser, 'canRequestCertificates')} />)}
+            {currentView === 'certificate_view' && (<CertificateView student={currentStudentId ? db.students.find(s => s.id === currentStudentId) : null} template={db.certificateTemplate} settings={db.certificateSettings || defaultCertSettings} onUploadTemplate={handleCertTemplateUpload} onUpdateSettings={handleUpdateCertSettings} canEdit={currentUser.role === 'superadmin' || checkPerm(currentUser, 'canRequestCertificates')} />)}
 
-            {currentView === 'advanced_summary' && currentStudentId && (<AdvancedCourseSummaryReport student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView('student_profile')} />)}
+            {currentView === 'attendance_summary' && currentStudentId && (<AttendanceSummaryReport student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView((currentUser.role === 'student' || currentUser.role === 'parent') ? 'dashboard' : 'student_profile')} />)}
             
-            {currentView === 'attendance_summary' && currentStudentId && (<AttendanceSummaryReport student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView('student_profile')} />)}
+            {currentView === 'advanced_summary' && currentStudentId && (<AdvancedCourseSummaryReport student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView((currentUser.role === 'student' || currentUser.role === 'parent') ? 'dashboard' : 'student_profile')} />)}
+
           </div>
         </div>
       )}
-    </>
+    </LanguageContext.Provider>
   );
 }
 
 export default App;
+
