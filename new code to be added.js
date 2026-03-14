@@ -3,45 +3,15 @@ import { Trash2, Plus, Save, UserCircle, Settings, Award, ShieldCheck, Graduatio
 
 // --- FIREBASE IMPORTS ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, writeBatch, query } from 'firebase/firestore';
 
 // --- INITIALIZE FIREBASE ---
-const runtimeFirebaseConfig =
-  typeof __firebase_config !== 'undefined' && __firebase_config
-    ? JSON.parse(__firebase_config)
-    : null;
-
-const envFirebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
-};
-
-const fallbackFirebaseConfig = {
-  apiKey: "AIzaSyAmekG_W6a96pTJZ86fuwW1lWogmR9yV1I",
-  authDomain: "the-oxford-project.firebaseapp.com",
-  projectId: "the-oxford-project",
-  storageBucket: "the-oxford-project.firebasestorage.app",
-  messagingSenderId: "668485042428",
-  appId: "1:668485042428:web:a5f4717f9e3ee23b0e9779",
-  measurementId: "G-158BD16Z5B",
-};
-
-const firebaseConfig =
-  runtimeFirebaseConfig ||
-  (envFirebaseConfig.apiKey ? envFirebaseConfig : fallbackFirebaseConfig);
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const firestoreDb = getFirestore(app);
-const appId =
-  (typeof __app_id !== 'undefined' && __app_id) ||
-  firebaseConfig.projectId ||
-  'default-app-id';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 const getPublicCollection = (collectionName) => collection(firestoreDb, 'artifacts', appId, 'public', 'data', collectionName);
 const getPublicDoc = (collectionName, documentId) => doc(firestoreDb, 'artifacts', appId, 'public', 'data', collectionName, documentId);
@@ -169,11 +139,9 @@ const getThemeColor = (course, level) => {
   return '#f09e5e';
 };
 
-const isDirectorRole = (role) => role === 'director' || role === 'superadmin';
-
 const checkPerm = (user, permName) => {
   if (!user) return false;
-  if (isDirectorRole(user.role)) return true;
+  if (user.role === 'superadmin') return true;
   const isPrivatePerm = permName.startsWith('canView');
   return user.permissions && user.permissions[permName] !== undefined 
     ? user.permissions[permName] 
@@ -254,7 +222,7 @@ const translations = {
     edit_report: "Edit Report",
     final_preview: "Final Preview",
     back_portal: "Back to My Portal",
-    super_admin_dashboard: "Director Dashboard",
+    super_admin_dashboard: "Managing Director Dashboard",
     new_student: "New Student",
     new_user: "New User",
     manage_students: "Manage Students",
@@ -337,7 +305,7 @@ const translations = {
     edit_report: "แก้ไขรายงาน",
     final_preview: "ดูตัวอย่างรายงาน",
     back_portal: "กลับสู่พอร์ทัลของฉัน",
-    super_admin_dashboard: "แผงควบคุมผู้อำนวยการ",
+    super_admin_dashboard: "แผงควบคุมผู้ดูแลระบบ",
     new_student: "เพิ่มนักเรียนใหม่",
     new_user: "เพิ่มผู้ใช้ใหม่",
     manage_students: "จัดการนักเรียน",
@@ -602,7 +570,7 @@ function getInitialDb() {
     ],
     users: [
       { 
-        id: 'u_admin', username: 'admin', password: 'admin', name: 'Director', role: 'director', profileImage: null, calendarUrl: '',
+        id: 'u_admin', username: 'admin', password: 'admin', name: 'Managing Director', role: 'superadmin', profileImage: null, calendarUrl: '',
         permissions: {} 
       },
       { 
@@ -1176,7 +1144,7 @@ function StudentAttendance({ student, onUpdate, canEdit, showModal, currentUser 
                           <Edit3 size={16} />
                         </button>
                       )}
-                      {record.status !== 'deleted' && isDirectorRole(currentUser?.role) && (
+                      {record.status !== 'deleted' && currentUser?.role === 'superadmin' && (
                         <button onClick={() => handleDelete(record.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" title="Delete Record">
                           <Trash2 size={16} />
                         </button>
@@ -2197,7 +2165,7 @@ function AddUserForm({ onSubmit, onCancel }) {
            <select value={role} onChange={e=>setRole(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 bg-white font-medium text-gray-800 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer">
              <option value="teacher">Teacher</option>
              <option value="general_admin">General Admin</option>
-             <option value="director">Director</option>
+             <option value="superadmin">Managing Director</option>
            </select>
         </div>
         <div><label className="block text-sm font-bold mb-1 text-gray-700">Login ID / Username</label><input required value={username} onChange={e=>setUsername(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" /></div>
@@ -2727,7 +2695,7 @@ function AddEventForm({ currentUser, teachers, onSubmit, onCancel }) {
             <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white" />
           </div>
         </div>
-        {isDirectorRole(currentUser?.role) && (
+        {currentUser?.role === 'superadmin' && (
            <div>
              <label className="block text-sm font-bold mb-1 text-gray-700">Event Type</label>
              <select value={type} onChange={e=>setType(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
@@ -2736,7 +2704,7 @@ function AddEventForm({ currentUser, teachers, onSubmit, onCancel }) {
              </select>
            </div>
         )}
-        {type === 'teacher' && isDirectorRole(currentUser?.role) && (
+        {type === 'teacher' && currentUser?.role === 'superadmin' && (
            <div>
              <label className="block text-sm font-bold mb-1 text-gray-700">Assign to Teacher</label>
              <select value={teacherId} onChange={e=>setTeacherId(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white">
@@ -2781,7 +2749,7 @@ function ReportIssueForm({ currentUser, onSubmit, onCancel }) {
       });
     }} className="p-6">
       <h3 className="text-xl font-bold mb-2 text-gray-900 flex items-center gap-2"><AlertCircle className="text-red-500" /> Report an Issue</h3>
-      <p className="text-sm text-gray-500 mb-6">Describe the problem you are facing or provide feedback. The Director will be notified.</p>
+      <p className="text-sm text-gray-500 mb-6">Describe the problem you are facing or provide feedback. The Managing Director will be notified.</p>
       <div className="mb-6">
         <textarea required value={issue} onChange={e=>setIssue(e.target.value)} rows="4" className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" placeholder="I am unable to..."></textarea>
       </div>
@@ -2793,12 +2761,8 @@ function ReportIssueForm({ currentUser, onSubmit, onCancel }) {
   );
 }
 
-function SendFeedbackForm({ currentUser, currentStudent, onSubmit, onCancel }) {
+function SendFeedbackForm({ currentUser, onSubmit, onCancel }) {
   const [message, setMessage] = useState('');
-
-  const targetTeacherId = currentUser.role === 'student' ? (currentStudent?.teacherId || null) : null;
-  const isStudentFeedback = currentUser.role === 'student' && !!targetTeacherId;
-
   return (
     <form onSubmit={e => {
       e.preventDefault();
@@ -2809,20 +2773,18 @@ function SendFeedbackForm({ currentUser, currentStudent, onSubmit, onCancel }) {
         userRole: currentUser.role,
         issue: message,
         status: 'open',
-        ticketType: isStudentFeedback ? 'teacher_feedback' : 'feedback',
-        teacherId: targetTeacherId,
-        targetRole: isStudentFeedback ? 'teacher' : 'director',
+        ticketType: 'feedback',
         createdAt: new Date().toISOString(),
       });
     }} className="p-6">
       <h3 className="text-xl font-bold mb-2 text-gray-900 flex items-center gap-2"><MessageSquare className="text-blue-600" /> Send Feedback</h3>
-      <p className="text-sm text-gray-500 mb-6">{isStudentFeedback ? 'Send feedback directly to your teacher.' : 'Send a private message or feedback directly to the Director.'}</p>
+      <p className="text-sm text-gray-500 mb-6">Send a private message or feedback directly to the Managing Director.</p>
       <div className="mb-6">
         <textarea required value={message} onChange={e=>setMessage(e.target.value)} rows="4" className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" placeholder="Write your feedback here..."></textarea>
       </div>
       <div className="flex justify-end gap-3">
         <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors">Cancel</button>
-        <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-sm primary-action transition-colors">{isStudentFeedback ? 'Send to Teacher' : 'Send to Director'}</button>
+        <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-sm primary-action transition-colors">Send to Director</button>
       </div>
     </form>
   );
@@ -3568,7 +3530,7 @@ function StudentDashboardPage({ student, currentUser, db, showModal, allCalendar
                            {ticket.adminRemark && (
                              <div className="mt-4 bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 text-sm text-gray-800 shadow-inner">
                                <span className="font-extrabold text-indigo-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5 mb-1.5">
-                                 <ShieldCheck size={12} className="text-indigo-600"/> Reply from Director:
+                                 <ShieldCheck size={12} className="text-indigo-600"/> Reply from Managing Director:
                                </span>
                                <p className="whitespace-pre-wrap leading-relaxed">{ticket.adminRemark}</p>
                              </div>
@@ -4260,7 +4222,7 @@ function ModalManager({ modalState, closeModal }) {
             <ReportIssueForm currentUser={modalState.data.currentUser} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
           )}
           {modalState.type === 'SEND_FEEDBACK' && (
-              <SendFeedbackForm currentUser={modalState.data.currentUser} currentStudent={modalState.data.currentStudent} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
+            <SendFeedbackForm currentUser={modalState.data.currentUser} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
           )}
           {modalState.type === 'UPDATE_TICKET' && (
             <UpdateTicketForm ticket={modalState.data.ticket} onSubmit={(data) => { modalState.data.onSubmit(data); closeModal(); }} onCancel={closeModal} />
@@ -4350,7 +4312,7 @@ function CertificateView({ student, template, settings, onUploadTemplate, onUpda
         <div className="w-full bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12 text-center flex flex-col items-center">
            <ImageIcon size={48} className="text-gray-300 mb-4" />
            <h3 className="text-lg font-bold text-gray-800 mb-2">No Certificate Template Uploaded</h3>
-           <p className="text-gray-500 mb-6 max-w-md">The Director needs to upload a base certificate image (PNG/JPG) before certificates can be generated.</p>
+           <p className="text-gray-500 mb-6 max-w-md">The Managing Director needs to upload a base certificate image (PNG/JPG) before certificates can be generated.</p>
            {canEdit && (
              <div className="relative">
                 <input type="file" accept="image/*" onChange={onUploadTemplate} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
@@ -5119,7 +5081,6 @@ function App() {
   });
   
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [language, setLanguage] = useState(() => localStorage.getItem('app_lang') || 'en');
 
@@ -5150,13 +5111,6 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        await setPersistence(auth, browserLocalPersistence);
-
-        // If session was restored from local persistence, do not re-authenticate.
-        if (auth.currentUser) {
-          return;
-        }
-
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
@@ -5170,7 +5124,6 @@ function App() {
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
-      setIsAuthReady(true);
     });
     return () => unsubscribe();
   }, []);
@@ -5214,13 +5167,7 @@ function App() {
     seedDbIfNeeded();
 
     const unsubUsers = onSnapshot(getPublicCollection('users'), (snapshot) => {
-      const normalizedUsers = snapshot.docs.map((d) => {
-        const userData = d.data();
-        return isDirectorRole(userData.role)
-          ? { ...userData, role: 'director' }
-          : userData;
-      });
-      setDb(prev => ({ ...prev, users: normalizedUsers }));
+      setDb(prev => ({ ...prev, users: snapshot.docs.map(d => d.data()) }));
     }, console.error);
 
     const unsubStudents = onSnapshot(getPublicCollection('students'), (snapshot) => {
@@ -5298,12 +5245,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('app_lang', language);
   }, [language]);
-
-  useEffect(() => {
-    if (currentUser?.role === 'general_admin' && (adminTab === 'tickets' || adminTab === 'feedback')) {
-      setAdminTab('students');
-    }
-  }, [currentUser, adminTab]);
 
   const t = (key) => translations[language]?.[key] || translations.en?.[key] || key;
 
@@ -5429,7 +5370,7 @@ function App() {
     return [...db.events, ...classEvents, ...attendanceEvents];
   }, [db.students, db.events, db.users]);
 
-  if (!isAuthReady || !isDbLoaded) {
+  if (!isDbLoaded) {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
         <Cloud size={48} className="text-indigo-500 mb-4 animate-pulse" />
@@ -5445,22 +5386,20 @@ function App() {
     const { username, password } = loginForm;
     
     // Check Main Users Table (Admin, Teacher, Student)
-     const user = db.users.find(u => u.username === username && u.password === password);
+    const user = db.users.find(u => u.username === username && u.password === password);
     if (user) {
-      const normalizedUser = isDirectorRole(user.role) ? { ...user, role: 'director' } : user;
       if (user.role === 'student' || user.role === 'parent') {
-        const linkedStudent = db.students.find(s => s.id === normalizedUser.studentId);
+         const linkedStudent = db.students.find(s => s.id === user.studentId);
          if (!linkedStudent) {
             showModal('ALERT', { title: 'Login Error', message: 'Your account is not linked to a valid student profile. Please contact an administrator.'});
             return;
          }
-        setCurrentUser(normalizedUser);
+         setCurrentUser(user);
          setCurrentStudentId(linkedStudent.id);
          setCurrentView('dashboard');
       } else {
-        setAdminTab('students');
-        setCurrentUser(normalizedUser);
-        if (isDirectorRole(normalizedUser.role)) {
+         setCurrentUser(user);
+         if (user.role === 'superadmin') {
             setCalendarInputUrl(db.adminCalendarUrl || '');
          }
          setCurrentView('dashboard');
@@ -5695,26 +5634,16 @@ function App() {
   const openAddUserModal = () => {
     showModal('ADD_USER', {
       onSubmit: (userData) => {
-        const defaultTeacherPermissions = {
-          canEditReports: true, canRequestCertificates: true, canEditStudentInfo: true,
-          canManageAttendance: true, canViewPhone: false, canViewEmail: false,
-          canViewLineId: false, canViewNotes: false, canViewPrivateCustomInfo: false
-        };
-        const defaultGeneralAdminPermissions = {
-          canEditReports: true, canRequestCertificates: true, canEditStudentInfo: true,
-          canManageAttendance: true, canViewPhone: true, canViewEmail: true,
-          canViewLineId: true, canViewNotes: true, canViewPrivateCustomInfo: true
-        };
         const newUser = {
           id: `u_${Date.now()}`, 
           ...userData, 
           profileImage: null, 
           calendarUrl: '',
-          permissions: userData.role === 'teacher'
-            ? defaultTeacherPermissions
-            : userData.role === 'general_admin'
-              ? defaultGeneralAdminPermissions
-              : {},
+          permissions: userData.role === 'teacher' ? { 
+            canEditReports: true, canRequestCertificates: true, canEditStudentInfo: true, 
+            canManageAttendance: true, canViewPhone: false, canViewEmail: false, 
+            canViewLineId: false, canViewNotes: false, canViewPrivateCustomInfo: false 
+          } : {}
         };
         setDoc(getPublicDoc('users', newUser.id), newUser).catch(console.error);
       }
@@ -5723,7 +5652,7 @@ function App() {
 
   const confirmRemoveUser = (userId) => {
     showModal('CONFIRM', {
-      title: 'Delete User',
+      title: 'Remove User',
       message: 'Are you sure you want to permanently delete this user account?',
       onConfirm: () => {
         deleteDoc(getPublicDoc('users', userId)).catch(console.error);
@@ -5875,19 +5804,18 @@ function App() {
                 <button 
                   onClick={() => showModal('SEND_FEEDBACK', { 
                     currentUser, 
-                    currentStudent: db.students.find(s => s.id === currentUser.studentId) || db.students.find(s => s.id === currentUser.id),
                     onSubmit: (data) => {
                       setDoc(getPublicDoc('tickets', data.id), data).catch(console.error);
-                      showModal('ALERT', { title: 'Message Sent', message: currentUser.role === 'student' ? 'Your feedback has been successfully sent to your teacher.' : 'Your feedback has been successfully sent to the Director.' });
+                      showModal('ALERT', { title: 'Message Sent', message: 'Your feedback has been successfully sent to the Managing Director.' });
                     }
                   })} 
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border border-blue-100 rounded-lg text-xs font-bold transition-colors shadow-sm" 
-                  title="Send Feedback"
+                  title="Parent Feedback"
                 >
                   <MessageSquare size={16} />
-                  <span className="hidden sm:inline">Send Feedback</span>
+                  <span className="hidden sm:inline">Parent Feedback</span>
                 </button>
-              ) : currentUser.role !== 'general_admin' ? (
+              ) : (
                 <button 
                   onClick={() => showModal('REPORT_ISSUE', { 
                     currentUser, 
@@ -5899,7 +5827,7 @@ function App() {
                   <AlertCircle size={16} />
                   <span className="hidden sm:inline">Report Issue</span>
                 </button>
-              ) : null}
+              )}
               <button onClick={() => { setCurrentUser(null); setCurrentStudentId(null); setCurrentReportId(null); setCurrentView('dashboard'); }} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Log Out"><LogOut size={20} /></button>
             </div>
           </div>
@@ -5918,8 +5846,8 @@ function App() {
               />
             )}
 
-            {/* DIRECTOR / GENERAL ADMIN DASHBOARD */}
-            {(currentUser.role === 'director' || currentUser.role === 'general_admin') && currentView === 'dashboard' && (
+            {/* SUPER ADMIN DASHBOARD */}
+            {currentUser.role === 'superadmin' && currentView === 'dashboard' && (
               <div className="w-full max-w-6xl bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 flex flex-col print:shadow-none print:border-none print:w-full print:max-w-none print:overflow-visible print:block">
                 <div className="bg-[#213568] p-6 text-white flex justify-between items-center shrink-0 print:hidden">
                   <div>
@@ -5976,8 +5904,8 @@ function App() {
                     <button onClick={() => setAdminTab('courses')} className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all w-full text-left ${adminTab === 'courses' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-indigo-600'}`}>
                       <span className="flex items-center gap-3"><ClipboardList size={18}/> {t('manage_courses')}</span>
                     </button>
-                    {currentUser.role === 'director' && (() => {
-                      const openIssuesCount = (db.tickets || []).filter(t => (t.status === 'open' || t.status === 'in_progress') && t.ticketType !== 'feedback' && t.ticketType !== 'teacher_feedback').length;
+                    {(() => {
+                      const openIssuesCount = (db.tickets || []).filter(t => (t.status === 'open' || t.status === 'in_progress') && t.ticketType !== 'feedback').length;
                       const openFeedbackCount = (db.tickets || []).filter(t => (t.status === 'open' || t.status === 'in_progress') && t.ticketType === 'feedback').length;
                       return (
                         <>
@@ -6148,7 +6076,7 @@ function App() {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                             {db.users.map(user => (
-                              <tr key={user.id} className={`hover:bg-gray-50/50 transition-colors ${user.role === 'director' ? 'bg-indigo-50/30' : ''}`}>
+                              <tr key={user.id} className={`hover:bg-gray-50/50 transition-colors ${user.role === 'superadmin' ? 'bg-indigo-50/30' : ''}`}>
                                 <td className="p-4">
                                   <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 group bg-gray-100 mx-auto shadow-sm flex items-center justify-center">
                                      {user.profileImage ? <img src={user.profileImage} className="w-full h-full object-cover" alt="User" /> : <UserCircle size={32} className="text-gray-300"/>}
@@ -6157,7 +6085,7 @@ function App() {
                                 </td>
                                 <td className="p-4 font-bold text-gray-800">{user.name}{user.id === currentUser.id && <span className="ml-2 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase font-bold">You</span>}</td>
                                 <td className="p-4">
-                                  {user.role === 'director' ? <span className="inline-flex items-center gap-1 text-indigo-700 font-bold text-xs"><ShieldCheck size={14}/> Director</span> : 
+                                  {user.role === 'superadmin' ? <span className="inline-flex items-center gap-1 text-indigo-700 font-bold text-xs"><ShieldCheck size={14}/> Director</span> : 
                                    user.role === 'teacher' ? <span className="inline-flex items-center gap-1 text-gray-600 font-bold text-xs"><Users size={14}/> Teacher</span> :
                                    <span className="inline-flex items-center gap-1 text-blue-600 font-bold text-xs"><GraduationCap size={14}/> Student</span>}
                                   {user.role === 'student' && !db.students.find(s => s.id === user.studentId) && <div className="text-[10px] text-red-600 mt-1 font-bold">⚠ Unlinked Profile</div>}
@@ -6166,7 +6094,7 @@ function App() {
                                 <td className="p-4"><span className="font-mono text-sm text-gray-500 bg-gray-100 rounded px-2 py-1">{user.password || 'N/A'}</span></td>
                                 <td className="p-4 text-right flex justify-end gap-2 items-center">
                                   <button onClick={() => showModal('USER_SETTINGS', { user: user, onSubmit: (data) => updateDoc(getPublicDoc('users', user.id), data) })} className="text-indigo-500 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-transparent hover:border-indigo-200" title="Settings"><Settings size={18} /></button>
-                                  <button onClick={() => confirmRemoveUser(user.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Delete User"><Trash2 size={18} /></button>
+                                  <button onClick={() => confirmRemoveUser(user.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-200" title="Remove"><Trash2 size={18} /></button>
                                 </td>
                               </tr>
                             ))}
@@ -6280,10 +6208,10 @@ function App() {
                       </div>
                     )}
 
-                    {adminTab === 'tickets' && currentUser.role === 'director' && (
+                    {adminTab === 'tickets' && (
                       <AdminTicketDashboard 
                         type="issue"
-                        tickets={(db.tickets || []).filter(t => t.ticketType !== 'feedback' && t.ticketType !== 'teacher_feedback')}
+                        tickets={(db.tickets || []).filter(t => t.ticketType !== 'feedback')}
                         showModal={showModal}
                         title="Support Tickets Report"
                         description="Review and resolve technical issues reported by staff and users."
@@ -6291,7 +6219,7 @@ function App() {
                       />
                     )}
 
-                    {adminTab === 'feedback' && currentUser.role === 'director' && (
+                    {adminTab === 'feedback' && (
                       <AdminTicketDashboard 
                         type="feedback"
                         tickets={(db.tickets || []).filter(t => t.ticketType === 'feedback')}
@@ -6532,7 +6460,7 @@ function App() {
                       <button onClick={() => setCurrentView('student_payments')} className="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-emerald-100 hover:bg-emerald-100 transition-colors"><CreditCard size={18} /> {t('payments_billing')}</button>
                       <button onClick={() => setCurrentView('attendance_summary')} className="bg-blue-50 text-blue-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-blue-100 hover:bg-blue-100 transition-colors"><Activity size={18} /> {t('attendance_summary')}</button>
                       <button onClick={() => setCurrentView('advanced_summary')} className="bg-indigo-50 text-indigo-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-indigo-100 hover:bg-indigo-100 transition-colors"><ClipboardList size={18} /> {t('advanced_summary')}</button>
-                      {currentUser.role === 'director' && (
+                      {currentUser.role === 'superadmin' && (
                         <button onClick={() => handleDeleteStudent(currentStudentId)} className="bg-red-50 text-red-700 px-4 py-3 rounded-xl font-bold shadow-sm flex items-center gap-2 border border-red-100 hover:bg-red-100 transition-colors"><Trash2 size={18} /> Delete Profile</button>
                       )}
                     </div>
@@ -6567,7 +6495,7 @@ function App() {
                         </button>
                       </div>
                     )}
-                    {currentUser.role === 'director' && (
+                    {currentUser.role === 'superadmin' && (
                       <StudentLoginManager 
                         student={db.students.find(s => s.id === currentStudentId)} 
                         users={db.users} 
@@ -6705,7 +6633,7 @@ function App() {
               );
             })()}
 
-            {currentView === 'certificate_view' && (<CertificateView student={currentStudentId ? db.students.find(s => s.id === currentStudentId) : null} template={db.certificateTemplate} settings={db.certificateSettings || defaultCertSettings} onUploadTemplate={handleCertTemplateUpload} onUpdateSettings={handleUpdateCertSettings} canEdit={currentUser.role === 'director' || checkPerm(currentUser, 'canRequestCertificates')} />)}
+            {currentView === 'certificate_view' && (<CertificateView student={currentStudentId ? db.students.find(s => s.id === currentStudentId) : null} template={db.certificateTemplate} settings={db.certificateSettings || defaultCertSettings} onUploadTemplate={handleCertTemplateUpload} onUpdateSettings={handleUpdateCertSettings} canEdit={currentUser.role === 'superadmin' || checkPerm(currentUser, 'canRequestCertificates')} />)}
 
             {currentView === 'attendance_summary' && currentStudentId && (<AttendanceSummaryReport student={db.students.find(s => s.id === currentStudentId)} onClose={() => setCurrentView((currentUser.role === 'student' || currentUser.role === 'parent') ? 'dashboard' : 'student_profile')} />)}
             
